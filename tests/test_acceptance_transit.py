@@ -13,8 +13,8 @@ from src.hd_transit import (
 )
 from src.hd_tables import longitude_to_activation
 
-BIRTH = dict(year=1994, month=10, day=16, hour_ut=13 + 57/60,
-             lat=44.2333, lon=-76.5)
+BIRTH = dict(year=1961, month=8, day=5, hour_ut=5 + 24/60,
+             lat=21.3069, lon=-157.8583)
 _hd = compute_hd_chart(**BIRTH)
 BIRTH_JD = _hd.birth_julian_day
 

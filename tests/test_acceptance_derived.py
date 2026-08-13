@@ -2,7 +2,14 @@
 Acceptance tests — derived chart layers (addendum Part 2).
 Progressions, solar/lunar returns, profections, connection chart,
 synastry, composite, transits.
-Reference chart: the primary reference birth moment (see test_acceptance_astrology).
+Reference chart: the primary reference birth moment (see test_acceptance_astrology) —
+Barack Obama, 4 Aug 1961 19:24 AHST (= 5 Aug 05:24 UT), Honolulu.
+
+Assertion tiers, following the convention in test_fixtures.py:
+  "expect" — independently checkable (exactness maths, house arithmetic, or
+             an externally published value).
+  "pin"    — engine-derived regression pins that guard against silent drift
+             but are not externally verified.
 """
 
 import sys, os
@@ -26,10 +33,10 @@ from src.derived_charts import (
 from src.human_design import compute_hd_chart
 from src.hd_connection import connection_chart, hd_transit_overlay
 
-BIRTH = dict(year=1994, month=10, day=16, hour_ut=13 + 57/60,
-             lat=44.2333, lon=-76.5)
-BIRTH_DATE = date(1994, 10, 16)
-BIRTH_JD = julian_day(1994, 10, 16, 13 + 57/60)
+BIRTH = dict(year=1961, month=8, day=5, hour_ut=5 + 24/60,
+             lat=21.3069, lon=-157.8583)
+BIRTH_DATE = date(1961, 8, 4)          # local birth date (Honolulu)
+BIRTH_JD = julian_day(1961, 8, 5, 5 + 24/60)
 
 _natal = calc_chart(**BIRTH)
 _natal_positions = {name: {"longitude": p.longitude, "speed": p.speed,
@@ -38,27 +45,27 @@ _natal_positions = {name: {"longitude": p.longitude, "speed": p.speed,
 
 
 # ---------------------------------------------------------------------------
-# 2. Secondary progressions
-# Cross-checked against an independent astrology application's progressed
-# chart for the same date:
-# progressed Moon ~14° Taurus, progressed Venus ~3° Scorpio retrograde.
+# 2. Secondary progressions  [pin]
+# The day-for-a-year arithmetic is independently checkable; the resulting
+# positions below are engine-derived regression pins for this chart.
 # ---------------------------------------------------------------------------
 def test_progressed_moon():
     target_jd = julian_day(2026, 7, 19, 12)
     prog = progressed_positions(BIRTH_JD, target_jd)
     sign, deg = longitude_to_sign_degree(prog["positions"]["moon"]["longitude"])
-    assert sign == "Taurus", f"progressed Moon sign {sign} ≠ Taurus"
-    assert 13 <= deg <= 15.5, f"progressed Moon {deg:.2f}° not ~14° Taurus"
+    assert sign == "Libra", f"progressed Moon sign {sign} ≠ Libra"
+    assert 8 <= deg <= 9.5, f"progressed Moon {deg:.2f}° not ~8°46′ Libra"
 
 
-def test_progressed_venus_retrograde():
+def test_progressed_elapsed_years():
+    """The day-for-a-year rule itself: elapsed years must equal the age in
+    tropical years, and the progressed JD must be birth_jd + that many days."""
     target_jd = julian_day(2026, 7, 19, 12)
     prog = progressed_positions(BIRTH_JD, target_jd)
-    v = prog["positions"]["venus"]
-    sign, deg = longitude_to_sign_degree(v["longitude"])
-    assert sign == "Scorpio", f"progressed Venus sign {sign} ≠ Scorpio"
-    assert 2 <= deg <= 4.5, f"progressed Venus {deg:.2f}° not ~3° Scorpio"
-    assert v["retrograde"], "progressed Venus should be retrograde"
+    expected_years = (target_jd - BIRTH_JD) / 365.24219
+    assert abs(prog["elapsed_years"] - expected_years) < 1e-9
+    assert abs(prog["progressed_jd"] - (BIRTH_JD + expected_years)) < 1e-9
+    assert 64 < prog["elapsed_years"] < 65, "should be ~64.96 years"
 
 
 # ---------------------------------------------------------------------------
@@ -67,13 +74,13 @@ def test_progressed_venus_retrograde():
 def test_solar_return_exactness():
     natal_sun = _natal.planets["sun"].longitude
     return_jd, chart = solar_return(natal_sun, 2026, BIRTH["lat"], BIRTH["lon"],
-                                    birth_month=10, birth_day=16)
+                                    birth_month=8, birth_day=4)
     diff = abs(chart.planets["sun"].longitude - natal_sun)
     diff = min(diff, 360 - diff)
     assert diff < 1/60, f"SR Sun off natal by {diff*60:.3f}′ (must be <1′)"
 
     y, m, d, h = jd_to_datetime_tuple(return_jd)
-    assert (m, d) in {(10, 15), (10, 16), (10, 17)}, (
+    assert (m, d) in {(8, 3), (8, 4), (8, 5), (8, 6)}, (
         f"SR date {y}-{m:02d}-{d:02d} not within a day of the birthday"
     )
 
@@ -92,29 +99,30 @@ def test_lunar_return_exactness():
 
 
 # ---------------------------------------------------------------------------
-# 5. Annual profections (Scorpio rising)
+# 5. Annual profections (Aquarius rising) — pure house arithmetic, so these
+#    are checkable by hand rather than needing an external source.
 # ---------------------------------------------------------------------------
-def test_profection_age_31():
-    # age 31 → (31%12)+1 = 8th house from Scorpio = Gemini → Mercury
+def test_profection_age_64():
+    # age 64 → (64%12)+1 = 5th house from Aquarius = Gemini → Mercury
     prof = annual_profection(_natal.ascendant, BIRTH_DATE, date(2026, 7, 19))
-    assert prof["age"] == 31, f"age {prof['age']} ≠ 31"
-    assert prof["profected_house"] == 8
+    assert prof["age"] == 64, f"age {prof['age']} ≠ 64"
+    assert prof["profected_house"] == 5
     assert prof["profected_sign"] == "Gemini"
     assert prof["lord_of_year"] == "Mercury"
 
 
-def test_profection_age_33():
-    # age 33 → (33%12)+1 = 10th house from Scorpio = Leo → Sun
+def test_profection_age_66():
+    # age 66 → (66%12)+1 = 7th house from Aquarius = Leo → Sun
     prof = annual_profection(_natal.ascendant, BIRTH_DATE, date(2028, 7, 19))
-    assert prof["age"] == 33
-    assert prof["profected_house"] == 10
+    assert prof["age"] == 66
+    assert prof["profected_house"] == 7
     assert prof["profected_sign"] == "Leo"
     assert prof["lord_of_year"] == "Sun"
 
 
 def test_completed_age_boundary():
-    assert completed_age(BIRTH_DATE, date(2026, 10, 15)) == 31
-    assert completed_age(BIRTH_DATE, date(2026, 10, 16)) == 32
+    assert completed_age(BIRTH_DATE, date(2026, 8, 3)) == 64
+    assert completed_age(BIRTH_DATE, date(2026, 8, 4)) == 65
 
 
 # ---------------------------------------------------------------------------
@@ -221,11 +229,11 @@ if __name__ == "__main__":
 
     tests = [
         test_progressed_moon,
-        test_progressed_venus_retrograde,
+        test_progressed_elapsed_years,
         test_solar_return_exactness,
         test_lunar_return_exactness,
-        test_profection_age_31,
-        test_profection_age_33,
+        test_profection_age_64,
+        test_profection_age_66,
         test_completed_age_boundary,
         test_connection_self_reproduces_solo,
         test_connection_cross_completion,

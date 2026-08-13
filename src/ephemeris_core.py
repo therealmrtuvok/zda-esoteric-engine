@@ -85,7 +85,7 @@ def calc_chart(year: int, month: int, day: int, hour_ut: float,
                lat: float, lon: float) -> ChartData:
     """
     year/month/day: calendar date
-    hour_ut: decimal hours in UTC (e.g. 13 + 57/60 = 13.95)
+    hour_ut: decimal hours in UTC (e.g. 5 + 24/60 = 5.4)
     lat: degrees north positive
     lon: degrees east positive (west is negative)
     """

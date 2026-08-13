@@ -1,7 +1,16 @@
 """
 Acceptance test — Human Design layer.
-Same birth data as the astrology test.
-Every field must match the known-correct chart before this layer is trusted.
+
+Same reference chart as the astrology test: Barack Obama, 4 Aug 1961
+19:24 AHST (= 5 Aug 05:24 UT), Honolulu. Rodden AA birth data.
+
+Expected Human Design values are published independently of this engine and
+were cross-checked against two Human Design sources (see test_fixtures.py):
+Projector / Emotional — Solar Plexus / 6-2 / Single Definition / Left Angle,
+with only the Root and Solar Plexus centres defined ("a single channel from
+the Root to the Emotional System").
+
+Every field must match before this layer is trusted.
 """
 
 import sys, os
@@ -11,32 +20,33 @@ import swisseph as swe
 from src.human_design import compute_hd_chart
 from src.hd_tables import longitude_to_activation, opposite_gate, GATE_WHEEL
 
-BIRTH = dict(year=1994, month=10, day=16, hour_ut=13 + 57/60,
-             lat=44.2333, lon=-76.5)
+BIRTH = dict(year=1961, month=8, day=5, hour_ut=5 + 24/60,
+             lat=21.3069, lon=-157.8583)
 
 # ---------------------------------------------------------------------------
-# Known-correct HD reference (from brief)
+# Known-correct HD reference (externally published; see module docstring)
 # ---------------------------------------------------------------------------
 EXPECTED = {
-    "type":              "Generator",
-    "profile":           "3/5",
+    "type":              "Projector",
+    "profile":           "6/2",
     "authority":         "Emotional — Solar Plexus",
-    "definition":        "Quadruple Split",
-    "incarnation_cross": "Right Angle Cross of Maya (32/42 | 62/61)",
-    "variable":          "PLR DLR",
+    "definition":        "Single Definition",
+    "incarnation_cross": "Left Angle Cross of Refinement (33/19 | 2/1)",
+    "variable":          "PRL DRL",
     # Personality Sun gate/line
-    "p_sun_gate":        32,
-    "p_sun_line":         3,
+    "p_sun_gate":        33,
+    "p_sun_line":         6,
     # Design Sun gate/line
-    "d_sun_gate":        62,
-    "d_sun_line":         5,
-    # Defined centers: 8 of 9 — Head undefined
-    "defined_centers_count": 8,
+    "d_sun_gate":         2,
+    "d_sun_line":         2,
+    # Only Root + Solar Plexus defined — the sourced description is
+    # "one channel from the Root to the Emotional System" (channel 30-41)
+    "defined_centers_count": 2,
     "undefined_center":  "Head",
     # Not-Self
-    "not_self_theme":    "Frustration",
-    # Design date ~1994-07-17 (JD ~2449550)
-    "design_jd_approx":  2449550,
+    "not_self_theme":    "Bitterness",
+    # Design date 1961-05-05 (JD ~2437424.7)
+    "design_jd_approx":  2437425,
     "design_jd_tol":     3,           # ±3 days is generous
 }
 

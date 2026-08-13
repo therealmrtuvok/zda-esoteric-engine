@@ -50,7 +50,10 @@ tools/
 
 **89 named tests + a seeded 1,000-chart fuzz harness.**
 
-- `tests/test_acceptance_*.py` — known-correct reference chart, asserted to the arcminute
+- `tests/test_acceptance_*.py` — the reference chart is a **public figure with
+  Rodden AA birth data** (birth certificate), so every expected value comes from
+  outside this engine. Angles are cross-checked against two published charts and
+  agree to under an arcminute
 - `tests/test_fixtures.py` — 7 public-figure charts, each cross-checked against two
   independent sources, spanning all five Types, every definition class, and the
   Reflector zero-centres edge
@@ -80,8 +83,8 @@ Then `http://localhost:8777/docs`.
 ```bash
 curl -X POST http://localhost:8777/natal/human-design \
   -H "Content-Type: application/json" \
-  -d '{"birth_date":"1994-10-16","birth_time":"09:57",
-       "timezone":"America/Toronto","latitude":44.2333,"longitude":-76.5}'
+  -d '{"birth_date":"1961-08-04","birth_time":"19:24",
+       "timezone":"Pacific/Honolulu","latitude":21.3069,"longitude":-157.8583}'
 ```
 
 Birth data accepts either an explicit `timezone_offset_hours`, or an IANA

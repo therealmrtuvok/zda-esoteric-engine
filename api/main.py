@@ -66,12 +66,12 @@ class NatalRequest(BaseModel):
     Birth data. Two accepted shapes:
 
     1. Explicit parts + numeric UTC offset (original):
-       {"year":1994,"month":10,"day":16,"hour":9,"minute":57,
-        "timezone_offset_hours":-4,"latitude":44.2333,"longitude":-76.5}
+       {"year":1961,"month":8,"day":4,"hour":19,"minute":24,
+        "timezone_offset_hours":-10,"latitude":21.3069,"longitude":-157.8583}
 
     2. ISO strings + IANA zone (preferred for front-ends):
-       {"birth_date":"1994-10-16","birth_time":"09:57",
-        "timezone":"America/Toronto","latitude":44.2333,"longitude":-76.5}
+       {"birth_date":"1961-08-04","birth_time":"19:24",
+        "timezone":"Pacific/Honolulu","latitude":21.3069,"longitude":-157.8583}
 
     Shape 2 is safer: the engine resolves the historical UTC offset from the
     tz database, so daylight saving on the birth date is handled correctly.
@@ -154,24 +154,25 @@ def root():
 @app.get("/health")
 def health():
     """
-    Liveness + an accuracy self-check. Recomputes the reference chart
-    (1994-10-16 13:57 UT, Kingston ON) and compares against the known-correct
-    Ascendant. A deploy where the ephemeris backend changed or data files went
-    missing will report degraded here instead of silently serving wrong charts.
+    Liveness + an accuracy self-check. Recomputes the public reference chart
+    (1961-08-05 05:24 UT, Honolulu — Rodden AA, see tests/) and compares against
+    its known-correct Ascendant. A deploy where the ephemeris backend changed or
+    data files went missing reports degraded here instead of silently serving
+    wrong charts.
     """
     import swisseph as swe
     from src.ephemeris_core import _EPHE_PATH
 
     try:
         swe.set_ephe_path(_EPHE_PATH)
-        jd = swe.julday(1994, 10, 16, 13 + 57 / 60)
+        jd = swe.julday(1961, 8, 5, 5 + 24 / 60)
         _r, flag = swe.calc_ut(jd, swe.SUN, swe.FLG_SWIEPH | swe.FLG_SPEED)
         backend = ("swiss-files" if flag & swe.FLG_SWIEPH
                    else "moshier-builtin" if flag & swe.FLG_MOSEPH
                    else f"unknown({flag})")
 
-        chart = calc_chart(1994, 10, 16, 13 + 57 / 60, 44.2333, -76.5)
-        asc_err_arcmin = abs(chart.ascendant - 231.4495) * 60
+        chart = calc_chart(1961, 8, 5, 5 + 24 / 60, 21.3069, -157.8583)
+        asc_err_arcmin = abs(chart.ascendant - 318.0518) * 60
         ok = asc_err_arcmin < 1.0
         return {
             "status": "ok" if ok else "degraded",

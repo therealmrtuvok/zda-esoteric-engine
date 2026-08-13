@@ -13,12 +13,12 @@ from src.ephemeris_core import calc_at_jd, julian_day
 from invariants import check_chart, check_tables, STANDARD_BODIES
 
 KNOWN_CHARTS = [
-    # The primary reference chart
-    dict(year=1994, month=10, day=16, hour_ut=13 + 57/60, lat=44.2333, lon=-76.5),
+    # The primary reference chart (see test_acceptance_astrology)
+    dict(year=1961, month=8, day=5, hour_ut=5 + 24/60, lat=21.3069, lon=-157.8583),
     # The live-validated Toronto chart (Split definition, 5 centers)
     dict(year=2001, month=3, day=8, hour_ut=19.5, lat=43.6532, lon=-79.3832),
     # The Chiron-guard Projector (see test_chiron_guard below)
-    dict(year=1960, month=10, day=15, hour_ut=12.0, lat=44.2333, lon=-76.5),
+    dict(year=1960, month=10, day=15, hour_ut=12.0, lat=45.0, lon=-75.0),
 ]
 
 
@@ -34,13 +34,13 @@ def test_invariants_on_known_charts():
 
 # ---------------------------------------------------------------------------
 # Part 3 — targeted Chiron guard.
-# 1960-10-15 12:00 UT, Kingston ON: a Splenic Projector by the standard 13
+# 1960-10-15 12:00 UT (45.0N, 75.0W): a Splenic Projector by the standard 13
 # bodies. Chiron sits in gate 55 at that moment; the natal chart holds gate 39.
 # The OLD code (Chiron in HD_PLANETS) would have completed channel 39-55,
 # defined the Solar Plexus, and misread this person as an EMOTIONAL Projector.
 # This test fails on that code.
 # ---------------------------------------------------------------------------
-GUARD = dict(year=1960, month=10, day=15, hour_ut=12.0, lat=44.2333, lon=-76.5)
+GUARD = dict(year=1960, month=10, day=15, hour_ut=12.0, lat=45.0, lon=-75.0)
 
 
 def test_chiron_guard_activation_set():

@@ -1,8 +1,8 @@
 """
 Regression fixtures — verified public-figure Human Design charts.
 
-Complements test_acceptance_hd.py (reference chart: Generator / Emotional / Quadruple
-Split / Right Angle / Head open) with coverage it cannot provide:
+Complements test_acceptance_hd.py (reference chart: Projector / Emotional /
+Single Definition / Left Angle) with coverage it cannot provide:
 
   Types:        Projector (Obama), Manifestor (Ra Uru Hu, Aldrin),
                 ManifestingGenerator (Jolie), Reflector (Geller)
@@ -13,6 +13,7 @@ Split / Right Angle / Head open) with coverage it cannot provide:
   Angles:       Left Angle (Ra, Madonna, Obama), Juxtaposition 4/1 (Aldrin),
                 Right Angle (Oprah, Jolie)
   Defined Head: Madonna, Oprah, Aldrin (the reference chart's Head is open)
+  Note: Obama also serves as the primary acceptance chart in test_acceptance_*.
 
 Sourcing: birth data from Astro-Databank (Rodden AA/A) or, for Ra Uru Hu,
 from his own chart published by the Jovian Archive / humandesignsystem.com,

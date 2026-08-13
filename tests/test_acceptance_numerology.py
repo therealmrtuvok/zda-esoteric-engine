@@ -1,9 +1,13 @@
 """
 Acceptance test — numerology layer.
-Reference chart. The personal year runs birthday to birthday,
-based on the calendar year of the MOST RECENT birthday — not the current
-calendar year. Independently confirmed: personal year 8 in July 2026, turning 9
-on Oct 16 2026.
+Reference chart: Barack Obama, born 4 August 1961 (see test_acceptance_astrology).
+
+Life Path 2 is the externally checkable value here — it is widely published for
+this birth date and is reproducible by hand: 8 + 4 + (1+9+6+1=17→8) = 20 → 2.
+
+The personal year runs birthday to birthday, based on the calendar year of the
+MOST RECENT birthday — not the current calendar year. That convention is the
+behaviour under test at the 3 August / 4 August boundary below.
 """
 
 import sys, os
@@ -12,36 +16,36 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from datetime import date
 from src.numerology import life_path, personal_year, numerology_report
 
-BIRTH = date(1994, 10, 16)
+BIRTH = date(1961, 8, 4)
 
 
 def test_life_path():
-    # 10→1, 16→7, 1994→23→5; 1+7+5=13→4
-    assert life_path(BIRTH) == 4
+    # 8, 4, 1961→17→8; 8+4+8=20→2  (published value for this birth date)
+    assert life_path(BIRTH) == 2
 
 
 def test_personal_year_before_birthday():
-    # July 2026: last birthday Oct 16 2025 → 1+7+9=17→8
-    assert personal_year(BIRTH, date(2026, 7, 19)) == 8
+    # July 2026: last birthday 4 Aug 2025 → 8+4+(2025→9)=21→3
+    assert personal_year(BIRTH, date(2026, 7, 19)) == 3
 
 
 def test_personal_year_on_birthday():
-    # Oct 16 2026: 2026→10→1; 1+7+1=9
-    assert personal_year(BIRTH, date(2026, 10, 16)) == 9
+    # 4 Aug 2026: 2026→10→1; 8+4+1=13→4
+    assert personal_year(BIRTH, date(2026, 8, 4)) == 4
 
 
 def test_personal_year_day_before_birthday():
-    assert personal_year(BIRTH, date(2026, 10, 15)) == 8
+    assert personal_year(BIRTH, date(2026, 8, 3)) == 3
 
 
 def test_personal_year_after_birthday():
-    assert personal_year(BIRTH, date(2026, 12, 31)) == 9
+    assert personal_year(BIRTH, date(2026, 12, 31)) == 4
 
 
 def test_report_shape():
     rep = numerology_report(BIRTH, date(2026, 7, 19))
-    assert rep == {"life_path": 4, "personal_year": 8,
-                   "personal_month": 6, "personal_day": 7}
+    assert rep == {"life_path": 2, "personal_year": 3,
+                   "personal_month": 1, "personal_day": 2}
 
 
 if __name__ == "__main__":

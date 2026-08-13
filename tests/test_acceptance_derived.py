@@ -2,7 +2,7 @@
 Acceptance tests — derived chart layers (addendum Part 2).
 Progressions, solar/lunar returns, profections, connection chart,
 synastry, composite, transits.
-Reference chart: Shannon, 1994-10-16 13:57 UTC, Kingston ON.
+Reference chart: the primary reference birth moment (see test_acceptance_astrology).
 """
 
 import sys, os
@@ -39,7 +39,8 @@ _natal_positions = {name: {"longitude": p.longitude, "speed": p.speed,
 
 # ---------------------------------------------------------------------------
 # 2. Secondary progressions
-# Cross-checked against Shannon's Astro Gold progressed chart for 2026-07-19:
+# Cross-checked against an independent astrology application's progressed
+# chart for the same date:
 # progressed Moon ~14° Taurus, progressed Venus ~3° Scorpio retrograde.
 # ---------------------------------------------------------------------------
 def test_progressed_moon():

@@ -134,7 +134,7 @@ CROSSES: dict[tuple[int, int, int, int, str], str] = {
     (31, 41, 27, 28, "RAC"): "Right Angle Cross of the Unexpected",
     (31, 41, 24, 44, "JUX"): "Juxtaposition Cross of Influence",
     (31, 41, 24, 44, "LAC"): "Left Angle Cross of the Alpha",
-    (32, 42, 62, 61, "RAC"): "Right Angle Cross of Maya",  # confirmed against Shannon's verified chart
+    (32, 42, 62, 61, "RAC"): "Right Angle Cross of Maya",  # confirmed against a verified chart
     (32, 42, 56, 60, "JUX"): "Juxtaposition Cross of Conservation",
     (32, 42, 56, 60, "LAC"): "Left Angle Cross of Limitation",
     (33, 19, 24, 44, "RAC"): "Right Angle Cross of the Four Ways",

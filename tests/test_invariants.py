@@ -13,7 +13,7 @@ from src.ephemeris_core import calc_at_jd, julian_day
 from invariants import check_chart, check_tables, STANDARD_BODIES
 
 KNOWN_CHARTS = [
-    # Shannon (the original acceptance chart)
+    # The primary reference chart
     dict(year=1994, month=10, day=16, hour_ut=13 + 57/60, lat=44.2333, lon=-76.5),
     # The live-validated Toronto chart (Split definition, 5 centers)
     dict(year=2001, month=3, day=8, hour_ut=19.5, lat=43.6532, lon=-79.3832),

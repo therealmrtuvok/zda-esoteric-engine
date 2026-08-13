@@ -1,8 +1,8 @@
 """
 Acceptance test — numerology layer.
-Reference: Shannon (1994-10-16). The personal year runs birthday to birthday,
+Reference chart. The personal year runs birthday to birthday,
 based on the calendar year of the MOST RECENT birthday — not the current
-calendar year. Confirmed by Shannon: personal year 8 in July 2026, turning 9
+calendar year. Independently confirmed: personal year 8 in July 2026, turning 9
 on Oct 16 2026.
 """
 

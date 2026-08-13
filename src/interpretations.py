@@ -18,6 +18,16 @@ Voice rules followed here:
   - short sentences; no exclamation marks; no emoji
 """
 
+
+# ---------------------------------------------------------------------------
+# Display names. The engine's internal centre keys are not reader-facing.
+# ---------------------------------------------------------------------------
+CENTER_LABELS = {
+    "Head": "Head", "Ajna": "Ajna", "Throat": "Throat", "G": "G Centre",
+    "Heart": "Heart", "Sacral": "Sacral", "SolarPlexus": "Solar Plexus",
+    "Spleen": "Spleen", "Root": "Root",
+}
+
 # ---------------------------------------------------------------------------
 # Human Design: Type
 # ---------------------------------------------------------------------------
@@ -242,39 +252,151 @@ LINES = {
 # ---------------------------------------------------------------------------
 CENTERS = {
     "Head":        ("Inspiration and mental pressure",
-                    "Where questions and inspiration come from.",
+                    "Questions arrive on their own schedule and they are yours. You "
+                    "are not looking for something to wonder about; the wondering "
+                    "starts on its own, and it does not switch off because the "
+                    "timing is inconvenient.",
                     "You take in other people's questions and can feel pressured to "
-                    "answer things that were never yours to solve."),
+                    "answer things that were never yours to solve. The pressure is "
+                    "real. The obligation is borrowed."),
     "Ajna":        ("Conceptualisation",
-                    "A fixed way of processing and holding certainty.",
+                    "You process the same way every time. That consistency is why "
+                    "people bring you things to make sense of, and why changing your "
+                    "mind takes actual evidence rather than a good argument.",
                     "You think in many ways rather than one, which is flexible, and "
                     "makes pretending to be certain a real temptation."),
     "Throat":      ("Expression and manifestation",
-                    "Consistent access to speaking and doing.",
+                    "You have steady access to saying and doing. Not necessarily "
+                    "eloquence. Availability. The channel is open whether or not "
+                    "the room is listening, which is worth knowing before you "
+                    "wonder why you filled a silence.",
                     "You may talk to be noticed, or wait a long time to be asked."),
     "G":           ("Identity, direction and love",
-                    "A fixed sense of who you are and where you are going.",
+                    "You know who you are without checking. Direction comes from "
+                    "inside rather than from the room you are standing in, so when "
+                    "you feel lost it is usually a question of what to do next, "
+                    "not of who is asking.",
                     "Your direction changes with place and company, which is why "
                     "environment matters more for you than for most."),
     "Heart":       ("Willpower and worth",
-                    "Reliable willpower and a natural relationship with proving.",
-                    "You may over-promise to prove your worth. There is nothing to prove."),
+                    "Willpower is on tap. You can commit to a thing and deliver it, "
+                    "which means the promises you make are worth something and the "
+                    "ones you make lightly will still cost you.",
+                    "You may over-promise to prove your worth. There is nothing to "
+                    "prove."),
     "SolarPlexus": ("Emotions",
-                    "Emotional waves that are genuinely yours to ride.",
-                    "You amplify the emotional weather of the room and can mistake it "
-                    "for your own. Distance usually resolves it."),
+                    "The waves are yours. They are not a reaction to the room and "
+                    "not evidence that something is wrong. They are the weather of "
+                    "the system you were built with, and the whole point of the "
+                    "wave is that it moves.",
+                    "You amplify the emotional weather of the room and can mistake "
+                    "it for your own. Distance usually resolves it."),
     "Sacral":      ("Life force and work",
-                    "Consistent, renewable energy for work you respond to.",
+                    "There is a renewable supply here, and it is selective. It "
+                    "answers what genuinely interests you and goes flat on what "
+                    "does not, which is information rather than a discipline "
+                    "problem.",
                     "You do not have your own steady supply. Knowing when enough is "
                     "enough is the whole skill."),
     "Spleen":      ("Intuition, health and fear",
-                    "A steady sense of safety and wellbeing.",
-                    "You amplify fear that is not yours, and can hold onto things and "
-                    "people past their time."),
+                    "A consistent baseline sense of whether you are alright. It is "
+                    "quiet and it is fast, and because it never raises its voice it "
+                    "is the easiest thing in your chart to talk yourself out of.",
+                    "You amplify fear that is not yours, and can hold onto things "
+                    "and people past their time."),
     "Root":        ("Pressure and drive",
-                    "A consistent relationship with pressure and momentum.",
-                    "You feel rushed by pressure that belongs to other people, and can "
-                    "hurry to be free of it."),
+                    "Pressure is a constant, not an event. You are built to run "
+                    "under load, which is why an empty week can feel worse than a "
+                    "full one.",
+                    "You feel rushed by pressure that belongs to other people, and "
+                    "can hurry to be free of it."),
+}
+
+
+# ---------------------------------------------------------------------------
+# Human Design: Definition
+# What Definition describes is connection, not quantity. Two people can have
+# the same number of defined centres and a completely different chart shape.
+# ---------------------------------------------------------------------------
+DEFINITIONS = {
+    "Single Definition": {
+        "share": "roughly 41% of people",
+        "summary": "Everything defined in you is connected to everything else defined in you.",
+        "body": (
+            "One continuous circuit. Whatever is fixed in your design can reach "
+            "the rest of what is fixed in your design without going through "
+            "anyone. That tends to read as self-contained, and it is the reason "
+            "you can process something on your own and arrive somewhere without "
+            "having talked it through."
+        ),
+        "practical": (
+            "You are not dependent on other people to feel complete in yourself. "
+            "That is a genuine advantage and it can also make you slower to "
+            "notice when you have gone too long without company."
+        ),
+    },
+    "Split Definition": {
+        "share": "roughly 45% of people, the most common configuration",
+        "summary": "Your definition sits in two separate groups that do not touch.",
+        "body": (
+            "Two circuits, no bridge between them. The gap is not a deficiency; "
+            "it is the shape of the design. What it means in practice is that "
+            "certain things in you do not automatically talk to each other, and "
+            "another person standing nearby can connect them without either of "
+            "you doing anything deliberate."
+        ),
+        "practical": (
+            "You are likely to feel more like yourself around some people than "
+            "others, and it is worth noticing which. That is not neediness. It "
+            "is a mechanical fact about which gates complete your gap."
+        ),
+    },
+    "Triple Split": {
+        "share": "roughly 11% of people",
+        "summary": "Three separate areas of definition, none of them connected.",
+        "body": (
+            "Three circuits running in parallel. More of you is fixed than in a "
+            "typical chart, and less of it is joined up, so your internal "
+            "processing has more places where it does not automatically carry "
+            "across. Busier environments often suit you better than quiet ones, "
+            "because more people means more of the gaps get bridged."
+        ),
+        "practical": (
+            "Give things more time than feels reasonable. Multiple splits means "
+            "information has further to travel before it lands as a decision."
+        ),
+    },
+    "Quadruple Split": {
+        "share": "roughly 0.6% of people, the rarest configuration",
+        "summary": "Four separate areas of definition, none of them connected.",
+        "body": (
+            "A great deal of you is fixed, and almost none of it is joined up. "
+            "That combination is unusual enough that most descriptions of Human "
+            "Design will not describe your experience well. The practical effect "
+            "is not fragility. It is that you are consistent in four separate "
+            "ways at once, and integrating them is slow work rather than "
+            "automatic."
+        ),
+        "practical": (
+            "Patience with your own process is not optional here. Being around "
+            "other people does more of the joining than effort does, and rushing "
+            "a decision skips the part where the pieces meet."
+        ),
+    },
+    "No Definition": {
+        "share": "under 1% of people",
+        "summary": "Nothing is fixed. You have no definition at all.",
+        "body": (
+            "With no defined centres there is no consistent internal circuitry to "
+            "run on. What you have instead is total permeability: you take the "
+            "shape of what is around you, and you can read a room with a "
+            "precision that fixed people cannot."
+        ),
+        "practical": (
+            "Environment and company are not preferences for you. They are the "
+            "largest variable in your life, and time is the only reliable filter."
+        ),
+    },
 }
 
 # ---------------------------------------------------------------------------
@@ -345,12 +467,16 @@ def interpret_human_design(hd: dict) -> dict:
     for name, (title, when_defined, when_open) in CENTERS.items():
         is_def = name in defined
         centres.append({
-            "center": name, "theme": title, "defined": is_def,
+            "center": name, "label": CENTER_LABELS.get(name, name),
+            "theme": title, "defined": is_def,
             "text": when_defined if is_def else when_open,
         })
 
+    defn = DEFINITIONS.get(hd.get("definition"), {})
+
     return {
         "type": {"name": hd.get("type"), **t},
+        "definition": {"name": hd.get("definition"), **defn},
         "authority": {"name": hd.get("authority"), **auth},
         "profile": {"profile": profile, "lines": lines},
         "centers": centres,

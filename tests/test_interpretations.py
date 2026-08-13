@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.dirname(TESTS_DIR))
 sys.path.insert(0, TESTS_DIR)
 
 import copy
+import re
 from src.interpretations import (
     TYPES, AUTHORITIES, LINES, CENTERS, LIFE_PATHS, PERSONAL_YEARS,
     interpret_chart, interpret_human_design, interpret_numerology,
@@ -118,6 +119,29 @@ def test_handles_unknown_values_gracefully():
     assert out["profile"]["lines"] == []
     assert len(out["centers"]) == 9
     assert interpret_numerology({})["life_path"]["number"] is None
+
+
+def test_every_definition_has_copy():
+    """All five definition strings the engine can return must be covered."""
+    from src.interpretations import DEFINITIONS
+    from src.hd_tables import determine_definition
+    engine_values = {"Single Definition", "Split Definition", "Triple Split",
+                     "Quadruple Split", "No Definition"}
+    for d in engine_values:
+        assert d in DEFINITIONS, f"no interpretation for definition {d!r}"
+        for f in ("summary", "body", "practical"):
+            assert DEFINITIONS[d].get(f, "").strip(), f"{d}.{f} is blank"
+
+
+def test_center_labels_are_reader_facing():
+    """Internal keys like 'SolarPlexus' must never reach a reader."""
+    from src.interpretations import CENTER_LABELS
+    from src.hd_tables import CENTERS as ENGINE_CENTERS
+    assert set(CENTER_LABELS) == set(ENGINE_CENTERS)
+    assert CENTER_LABELS["SolarPlexus"] == "Solar Plexus"
+    for k, v in CENTER_LABELS.items():
+        assert " " in v or v.isalpha(), f"label {v!r} looks like an internal key"
+        assert not re.search(r"[a-z][A-Z]", v), f"camelCase leaked into label {v!r}"
 
 
 if __name__ == "__main__":

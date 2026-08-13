@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZDA BodyGraph — Transit Overlay</title>
+<style>
+  :root {
+    /* Hybrid color system (addendum 2, option 3):
+       traditional center colors on ZDA's near-black canvas;
+       gold = natal channel accent, amethyst = transit overlay. */
+    --center-mental:  #E9D24A;
+    --center-throat:  #8A6D4B;
+    --center-heart:   #C0392B;
+    --center-sacral:  #C0392B;
+    --center-emotion: #8A6D4B;
+    --center-spleen:  #8A6D4B;
+    --center-root:    #8A6D4B;
+    --center-g:       #E9D24A;
+    --center-open:    #0e0d16;
+    --chan-personality: #1a1a1a;
+    --chan-design:      #C0392B;
+    --chan-natal-accent:#C9A84C;
+    --transit:          #7B5EA7;
+    --canvas:           #0a0a0f;
+
+    --line: #2c2338;
+    --gold: #C9A84C;
+    --amethyst-soft: #a68fc9;
+    --text: #e9e3d5;
+    --muted: #93889f;
+    --serif: "Cormorant Garamond", Georgia, serif;
+    --display: "Cinzel", Georgia, serif;
+  }
+  html { background: var(--canvas); }
+  body {
+    background: radial-gradient(1000px 460px at 50% -80px, #16112a 0%, transparent 70%), var(--canvas);
+    color: var(--text); font-family: var(--serif); font-size: 16px;
+    margin: 0; padding: 0 18px 80px;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; }
+  header { text-align: center; padding: 40px 0 20px; }
+  .eyebrow { font-family: var(--display); font-size: 11px; letter-spacing: .3em; text-transform: uppercase; color: var(--amethyst-soft); }
+  h1 { font-family: var(--display); font-weight: 500; font-size: clamp(24px, 4vw, 34px); letter-spacing: .06em; color: var(--gold); margin: 10px 0 4px; }
+  .sub { color: var(--muted); font-style: italic; margin: 0; }
+
+  .layout { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; justify-content: center; margin-top: 18px; }
+  .graph-col { flex: 0 1 430px; min-width: 320px; }
+  .side-col  { flex: 1 1 380px; min-width: 300px; display: flex; flex-direction: column; gap: 18px; }
+
+  /* ---------- bodygraph binding styles (pure data-binding, no per-chart drawing) ---------- */
+  #graph-holder svg { width: 100%; height: auto; display: block; }
+
+  .center { fill: var(--center-open); stroke: var(--gold); stroke-opacity: .45; stroke-width: 1.4; }
+  .center[data-state="defined"] { stroke-opacity: .9; }
+  .center[data-state="transit"] { fill: color-mix(in srgb, var(--transit) 38%, var(--center-open)); stroke: var(--transit); stroke-opacity: 1; }
+  .center[data-state="defined"][data-color="mental"]  { fill: var(--center-mental); }
+  .center[data-state="defined"][data-color="throat"]  { fill: var(--center-throat); }
+  .center[data-state="defined"][data-color="heart"]   { fill: var(--center-heart); }
+  .center[data-state="defined"][data-color="sacral"]  { fill: var(--center-sacral); }
+  .center[data-state="defined"][data-color="emotion"] { fill: var(--center-emotion); }
+  .center[data-state="defined"][data-color="spleen"]  { fill: var(--center-spleen); }
+  .center[data-state="defined"][data-color="root"]    { fill: var(--center-root); }
+  .center[data-state="defined"][data-color="g"]       { fill: var(--center-g); }
+
+  .channel .half { fill: none; stroke: #1b1826; stroke-width: 5; stroke-linecap: round; }
+  .channel .half[data-src="personality"] { stroke: var(--chan-personality); }
+  .channel .half[data-src="design"]      { stroke: var(--chan-design); }
+  .channel .half[data-src="both"]        { stroke: var(--chan-design); }
+  .channel .half[data-src="transit"]     { stroke: var(--transit); }
+  /* natal accent: a gold glow behind any half activated natally */
+  .channel .half.natal-glow { filter: drop-shadow(0 0 2.5px var(--chan-natal-accent)); }
+  .channel .half[data-src="both"] { stroke-dasharray: 7 4; }
+  .channel[data-state="transitCompleted"] .half[data-src="transit"] {
+    filter: drop-shadow(0 0 4px var(--transit));
+  }
+
+  .gate circle { fill: #141020; stroke: var(--line); stroke-width: 1; }
+  .gate text { fill: var(--muted); }
+  .gate[data-state="activated"] circle { stroke: var(--gold); }
+  .gate[data-state="activated"] text { fill: var(--text); }
+  .gate[data-state="transit"] circle { fill: color-mix(in srgb, var(--transit) 55%, #141020); stroke: var(--transit); }
+  .gate[data-state="transit"] text { fill: #fff; }
+
+  /* ---------- controls ---------- */
+  .panel { background: #131022; border: 1px solid var(--line); padding: 18px 20px; }
+  .panel h3 { font-family: var(--display); font-size: 12px; letter-spacing: .22em; text-transform: uppercase; color: var(--amethyst-soft); margin: 0 0 12px; font-weight: 500; }
+  .lbl { font-family: var(--display); font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--amethyst-soft); display: block; margin-bottom: 5px; }
+  input[type="date"], input[type="time"], select {
+    background: var(--canvas); color: var(--text); border: 1px solid var(--line);
+    padding: 8px 10px; font-family: var(--serif); font-size: 15px; width: 100%; box-sizing: border-box;
+  }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  input[type="range"] { width: 100%; accent-color: var(--gold); }
+  .slider-label { text-align: center; font-family: var(--display); font-size: 13px; letter-spacing: .12em; color: var(--gold); margin: 6px 0 2px; }
+  .toggles { display: flex; flex-wrap: wrap; gap: 7px; }
+  .toggles label {
+    font-family: var(--display); font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+    border: 1px solid var(--line); border-radius: 999px; padding: 5px 11px; cursor: pointer; color: var(--muted);
+  }
+  .toggles input { display: none; }
+  .toggles label:has(input:checked) { border-color: var(--gold); color: var(--gold); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 13.5px; color: var(--muted); }
+  .legend span::before { content: "—"; font-weight: bold; margin-right: 5px; }
+  .legend .l-p::before { color: #555; }
+  .legend .l-d::before { color: var(--chan-design); }
+  .legend .l-t::before { color: var(--transit); }
+
+  #now-list { font-size: 14.5px; line-height: 1.65; }
+  #now-list .ch { color: var(--amethyst-soft); font-family: var(--display); font-size: 12px; letter-spacing: .1em; }
+  #status { color: var(--muted); font-style: italic; min-height: 20px; font-size: 14px; }
+  #status.err { color: #c97a6a; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { font-family: var(--display); font-size: 9.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--amethyst-soft); text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); font-weight: 500; }
+  td { padding: 5.5px 8px; border-bottom: 1px solid rgba(44,35,56,.5); }
+  td.mono { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Zero Degree Alchemy · Esoteric Engine</p>
+    <h1>BodyGraph — Transit Overlay</h1>
+    <p class="sub">Natal chart in traditional colors · what's lighting up now in amethyst</p>
+  </header>
+
+  <div class="layout">
+    <div class="graph-col">
+      <div id="graph-holder"></div>
+      <div class="legend" style="margin-top:10px; justify-content:center">
+        <span class="l-p">Personality (natal)</span>
+        <span class="l-d">Design (natal)</span>
+        <span class="l-t">Transit</span>
+      </div>
+    </div>
+
+    <div class="side-col">
+      <div class="panel">
+        <h3>Birth Data</h3>
+        <div class="row">
+          <label><span class="lbl">Date</span><input type="date" id="b-date" value="1994-10-16"></label>
+          <label><span class="lbl">Time</span><input type="time" id="b-time" value="09:57"></label>
+        </div>
+        <div class="row">
+          <label><span class="lbl">UTC offset</span>
+            <select id="b-tz">
+              <option value="-4" selected>EDT −4</option><option value="-5">EST −5</option>
+              <option value="-6">CST −6</option><option value="-7">MST −7</option>
+              <option value="-8">PST −8</option><option value="0">UTC</option>
+            </select></label>
+          <label><span class="lbl">Place</span>
+            <select id="b-city">
+              <option value="44.2333,-76.5" selected>Kingston, ON</option>
+              <option value="43.6532,-79.3832">Toronto, ON</option>
+              <option value="45.5017,-73.5673">Montreal, QC</option>
+              <option value="49.2827,-123.1207">Vancouver, BC</option>
+            </select></label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Projection Date</h3>
+        <div class="slider-label" id="slider-label">today</div>
+        <input type="range" id="day-slider" min="-30" max="1095" value="0" step="1">
+        <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--muted)">
+          <span>1 month ago</span><span>+3 years</span>
+        </div>
+        <div style="margin-top:12px">
+          <span class="lbl">Bodies in overlay</span>
+          <div class="toggles" id="body-toggles"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Active Now (transit-completed)</h3>
+        <div id="now-list">—</div>
+        <p id="status"></p>
+      </div>
+
+      <div class="panel">
+        <h3>Channel Windows — Next 3 Years <span style="color:var(--muted); text-transform:none; letter-spacing:0">(slow bodies)</span></h3>
+        <div style="overflow-x:auto"><table>
+          <thead><tr><th>Channel</th><th>Window</th><th>Via</th><th>Effect</th></tr></thead>
+          <tbody id="win-rows"><tr><td colspan="4" class="mono">scanning…</td></tr></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = "http://localhost:8777";
+const FAST = ["sun","moon","mercury","venus","mars"];
+const SLOW = ["jupiter","saturn","uranus","neptune","pluto","true_node"];
+const CENTER_COLOR = {head:"mental", ajna:"mental", throat:"throat", g:"g",
+                      heart:"heart", sacral:"sacral", spleen:"spleen",
+                      solarplexus:"emotion", root:"root"};
+const ENGINE_CENTER = {Head:"head", Ajna:"ajna", Throat:"throat", G:"g",
+                       Heart:"heart", Sacral:"sacral", Spleen:"spleen",
+                       SolarPlexus:"solarplexus", Root:"root"};
+
+let svgReady = fetch("bodygraph.svg").then(r => r.text()).then(t => {
+  document.getElementById("graph-holder").innerHTML = t;
+});
+
+// body toggles (default: all on for "today"-style view)
+const togglesEl = document.getElementById("body-toggles");
+for (const b of [...FAST, ...SLOW]) {
+  const label = document.createElement("label");
+  label.innerHTML = `<input type="checkbox" value="${b}" checked>${b.replace("true_node","node")}`;
+  togglesEl.appendChild(label);
+}
+
+function birthPayload() {
+  const d = document.getElementById("b-date").value.split("-").map(Number);
+  const t = document.getElementById("b-time").value.split(":").map(Number);
+  const [lat, lon] = document.getElementById("b-city").value.split(",").map(Number);
+  return {year:d[0], month:d[1], day:d[2], hour:t[0], minute:t[1],
+          timezone_offset_hours: parseFloat(document.getElementById("b-tz").value),
+          latitude:lat, longitude:lon};
+}
+
+function selectedBodies() {
+  return [...togglesEl.querySelectorAll("input:checked")].map(i => i.value);
+}
+
+function targetDate() {
+  const offset = parseInt(document.getElementById("day-slider").value);
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return d;
+}
+
+let inflight = null;
+async function refresh() {
+  await svgReady;
+  const d = targetDate();
+  const lbl = document.getElementById("slider-label");
+  const off = parseInt(document.getElementById("day-slider").value);
+  lbl.textContent = (off === 0 ? "today — " : "") + d.toISOString().slice(0,10);
+
+  const body = {...birthPayload(),
+    target_year: d.getFullYear(), target_month: d.getMonth()+1, target_day: d.getDate(),
+    target_hour: 12, target_minute: 0, bodies: selectedBodies()};
+
+  const status = document.getElementById("status");
+  try {
+    const ctrl = new AbortController();
+    if (inflight) inflight.abort();
+    inflight = ctrl;
+    const state = await fetch(API + "/transit-state", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify(body), signal: ctrl.signal}).then(r => r.json());
+    bind(state);
+    status.className = ""; status.textContent = "";
+  } catch (e) {
+    if (e.name === "AbortError") return;
+    status.className = "err";
+    status.textContent = "Engine not answering on port 8777 (" + e.message + ")";
+  }
+}
+
+function bind(state) {
+  // centers
+  for (const [engineName, key] of Object.entries(ENGINE_CENTER)) {
+    const el = document.getElementById("center-" + key);
+    if (!el) continue;
+    el.setAttribute("data-color", CENTER_COLOR[key]);
+    if (state.centersNatal[engineName]) el.setAttribute("data-state", "defined");
+    else if (state.centersTransit[engineName]) el.setAttribute("data-state", "transit");
+    else el.setAttribute("data-state", "open");
+  }
+  // gates
+  for (let g = 1; g <= 64; g++) {
+    const el = document.getElementById("gate-" + g);
+    if (!el) continue;
+    const src = state.gates[g].sources;
+    if (src.includes("personality") || src.includes("design")) el.setAttribute("data-state", "activated");
+    else if (src.includes("transit")) el.setAttribute("data-state", "transit");
+    else el.setAttribute("data-state", "open");
+  }
+  // channels — per-half coloring by that gate's sources
+  const nowList = [];
+  for (const [key, ch] of Object.entries(state.channels)) {
+    const el = document.getElementById("channel-" + key);
+    if (!el) continue;
+    el.setAttribute("data-state",
+      ch.transitCompleted ? "transitCompleted" : (ch.defined ? "defined" : "open"));
+    for (const half of el.querySelectorAll(".half")) {
+      const g = parseInt(half.getAttribute("data-gate"));
+      const src = state.gates[g].sources;
+      const p = src.includes("personality"), dd = src.includes("design"), t = src.includes("transit");
+      let v = null;
+      if (p && dd) v = "both"; else if (dd) v = "design";
+      else if (p) v = "personality"; else if (t) v = "transit";
+      if (v) half.setAttribute("data-src", v); else half.removeAttribute("data-src");
+      half.classList.toggle("natal-glow", p || dd);
+    }
+    if (ch.transitCompleted) nowList.push(key);
+  }
+  document.getElementById("now-list").innerHTML = nowList.length
+    ? nowList.map(k => `<div><span class="ch">${k}</span> — completed by transit</div>`).join("")
+    : "no transit-completed channels at this moment";
+}
+
+async function loadWindows() {
+  const d = new Date();
+  const end = new Date(); end.setFullYear(end.getFullYear() + 3);
+  const body = {...birthPayload(),
+    range_start_year: d.getFullYear(), range_start_month: d.getMonth()+1, range_start_day: d.getDate(),
+    range_end_year: end.getFullYear(), range_end_month: end.getMonth()+1, range_end_day: end.getDate()};
+  try {
+    const res = await fetch(API + "/projection", {method:"POST",
+      headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)}).then(r => r.json());
+    const rows = res.windows.map(w =>
+      `<tr><td class="mono">${w.channel}</td>` +
+      `<td class="mono">${w.start} → ${w.end}${w.ongoing ? "…" : ""}</td>` +
+      `<td>${w.planets.map(p => p.replace("true_node","node").replace("south_node","s-node")).join(", ")}</td>` +
+      `<td>${w.center_effect}</td></tr>`).join("");
+    document.getElementById("win-rows").innerHTML = rows || '<tr><td colspan="4">no windows in range</td></tr>';
+  } catch (e) {
+    document.getElementById("win-rows").innerHTML = `<tr><td colspan="4">scan failed: ${e.message}</td></tr>`;
+  }
+}
+
+let t = null;
+document.getElementById("day-slider").addEventListener("input", () => {
+  clearTimeout(t); t = setTimeout(refresh, 120);
+});
+togglesEl.addEventListener("change", refresh);
+for (const id of ["b-date","b-time","b-tz","b-city"]) {
+  document.getElementById(id).addEventListener("change", () => { refresh(); loadWindows(); });
+}
+
+refresh();
+loadWindows();
+</script>
+</body>
+</html>

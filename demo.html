@@ -1,0 +1,375 @@
+<meta charset="utf-8">
+<title>ZDA Esoteric Engine — First Chart</title>
+<style>
+  /* Deliberately single-theme: this is the ZDA night-sky brand world */
+  :root {
+    --bg: #0d0b11;
+    --surface: #161020;
+    --surface-2: #1d1628;
+    --line: #2c2338;
+    --gold: #c9a84c;
+    --gold-dim: #8a743a;
+    --amethyst: #7b5ea7;
+    --amethyst-soft: #a68fc9;
+    --text: #e9e3d5;
+    --muted: #93889f;
+    --serif: "Cormorant Garamond", "Cormorant", Georgia, "Times New Roman", serif;
+    --display: "Cinzel", "Trajan Pro", Georgia, serif;
+    --mono: "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  html { background: var(--bg); }
+  body {
+    background:
+      radial-gradient(1200px 500px at 50% -100px, #1d1430 0%, transparent 70%),
+      var(--bg);
+    color: var(--text);
+    font-family: var(--serif);
+    font-size: 18px;
+    line-height: 1.55;
+    margin: 0;
+    padding: 0 24px 96px;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; }
+
+  header { text-align: center; padding: 72px 0 40px; }
+  .eyebrow {
+    font-family: var(--display);
+    font-size: 12px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--amethyst-soft);
+  }
+  h1 {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: clamp(30px, 5vw, 44px);
+    letter-spacing: 0.06em;
+    color: var(--gold);
+    margin: 14px 0 10px;
+    text-wrap: balance;
+  }
+  .birth-line { color: var(--muted); font-style: italic; margin: 0; }
+  .verified {
+    display: inline-block;
+    margin-top: 22px;
+    padding: 7px 18px;
+    border: 1px solid var(--gold-dim);
+    border-radius: 999px;
+    font-family: var(--display);
+    font-size: 11.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+
+  h2 {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 21px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text);
+    text-align: center;
+    margin: 72px 0 8px;
+  }
+  h2::after {
+    content: "";
+    display: block;
+    width: 54px; height: 1px;
+    margin: 16px auto 0;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  }
+  .section-note { text-align: center; color: var(--muted); font-style: italic; margin: 0 0 34px; }
+
+  /* HD stat grid */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 14px;
+  }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 20px 22px 18px;
+  }
+  .stat .label {
+    font-family: var(--display);
+    font-size: 10.5px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--amethyst-soft);
+    margin-bottom: 8px;
+  }
+  .stat .value { font-size: 21px; line-height: 1.3; }
+  .stat .value em { color: var(--muted); font-size: 15px; display: block; margin-top: 3px; }
+
+  /* Centers row */
+  .centers {
+    display: flex; flex-wrap: wrap; justify-content: center;
+    gap: 10px; margin-top: 26px;
+  }
+  .center-chip {
+    font-family: var(--display);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--gold-dim);
+    color: var(--gold);
+    background: rgba(201,168,76,0.07);
+  }
+  .center-chip.open {
+    border-color: var(--line);
+    color: var(--muted);
+    background: transparent;
+  }
+
+  /* Wheel + planet table */
+  .chart-flex {
+    display: flex; flex-wrap: wrap; gap: 36px;
+    align-items: center; justify-content: center;
+  }
+  .wheel-box { flex: 0 1 380px; min-width: 300px; }
+  .wheel-box svg { width: 100%; height: auto; display: block; }
+  .table-box { flex: 1 1 400px; overflow-x: auto; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 16.5px;
+  }
+  th {
+    font-family: var(--display);
+    font-size: 10.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--amethyst-soft);
+    font-weight: 500;
+    text-align: left;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  td {
+    padding: 7.5px 14px;
+    border-bottom: 1px solid rgba(44,35,56,0.55);
+    white-space: nowrap;
+  }
+  td.deg { font-family: var(--mono); font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  td.glyph { color: var(--gold); font-size: 19px; width: 30px; }
+  .rx { color: var(--amethyst-soft); font-size: 13px; }
+  tr:last-child td { border-bottom: none; }
+
+  /* Numerology tiles */
+  .numer {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px;
+  }
+  .num-tile {
+    text-align: center;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 26px 12px 22px;
+  }
+  .num-tile .n {
+    font-family: var(--display);
+    font-size: 46px;
+    color: var(--gold);
+    line-height: 1;
+  }
+  .num-tile .t {
+    font-family: var(--display);
+    font-size: 10.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--amethyst-soft);
+    margin-top: 12px;
+  }
+
+  /* Proof footer */
+  .proof {
+    margin-top: 80px;
+    border-top: 1px solid var(--line);
+    padding-top: 28px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 15.5px;
+  }
+  .proof code {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--amethyst-soft);
+    background: var(--surface);
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .proof .badges { margin-top: 14px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .proof .badge {
+    font-family: var(--display);
+    font-size: 10.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border: 1px solid var(--gold-dim);
+    border-radius: 999px;
+    color: var(--gold);
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Zero Degree Alchemy · Esoteric Engine</p>
+    <h1>The First Gate</h1>
+    <p class="birth-line">October 16, 1994 · 9:57 AM EDT · Kingston, Ontario</p>
+    <span class="verified">✦ 29 / 29 acceptance tests passing</span>
+  </header>
+
+  <h2>Human Design</h2>
+  <p class="section-note">Personality &amp; Design computed from Swiss Ephemeris · Design date July 17, 1994</p>
+  <div class="stats">
+    <div class="stat"><div class="label">Type</div><div class="value">Generator<em>Strategy: Respond</em></div></div>
+    <div class="stat"><div class="label">Profile</div><div class="value">3 / 5<em>Martyr / Heretic</em></div></div>
+    <div class="stat"><div class="label">Authority</div><div class="value">Emotional<em>Solar Plexus</em></div></div>
+    <div class="stat"><div class="label">Definition</div><div class="value">Quadruple Split</div></div>
+    <div class="stat"><div class="label">Incarnation Cross</div><div class="value">Right Angle Cross of Maya<em>32/42 | 62/61</em></div></div>
+    <div class="stat"><div class="label">Variable</div><div class="value">PLR DLR</div></div>
+    <div class="stat"><div class="label">Not-Self Theme</div><div class="value">Frustration</div></div>
+    <div class="stat"><div class="label">Defined Channels</div><div class="value">2–14 · 23–43<br>32–54 · 37–40</div></div>
+  </div>
+  <div class="centers">
+    <span class="center-chip">Sacral</span>
+    <span class="center-chip">Solar Plexus</span>
+    <span class="center-chip">Spleen</span>
+    <span class="center-chip">Root</span>
+    <span class="center-chip">G Centre</span>
+    <span class="center-chip">Throat</span>
+    <span class="center-chip">Heart</span>
+    <span class="center-chip">Ajna</span>
+    <span class="center-chip open">Head — open</span>
+  </div>
+
+  <h2>Natal Chart</h2>
+  <p class="section-note">Tropical · Whole Sign houses · Ascendant 21°27′ Scorpio · MC 5°49′ Virgo</p>
+  <div class="chart-flex">
+    <div class="wheel-box"><svg id="wheel" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"></svg></div>
+    <div class="table-box">
+      <table>
+        <thead><tr><th></th><th>Body</th><th>Position</th><th>House</th></tr></thead>
+        <tbody id="planet-rows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <h2>Numerology</h2>
+  <p class="section-note">As of July 19, 2026 · personal year runs birthday to birthday — turns 9 on October 16, 2026</p>
+  <div class="numer">
+    <div class="num-tile"><div class="n">4</div><div class="t">Life Path</div></div>
+    <div class="num-tile"><div class="n">8</div><div class="t">Personal Year</div></div>
+    <div class="num-tile"><div class="n">6</div><div class="t">Personal Month</div></div>
+    <div class="num-tile"><div class="n">7</div><div class="t">Personal Day</div></div>
+  </div>
+
+  <div class="proof">
+    <p>Generated live by the engine — <code>POST /natal/astrology</code> · <code>POST /natal/human-design</code> · <code>POST /numerology</code></p>
+    <div class="badges">
+      <span class="badge">Astrology 8/8</span>
+      <span class="badge">Human Design 15/15</span>
+      <span class="badge">Numerology 6/6</span>
+      <span class="badge">Swiss Ephemeris + seas_18</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// Real engine output (POST /natal/astrology), embedded verbatim
+const PLANETS = [
+  ["☉","Sun",       202.9770, "22°58′ Libra",        12, false],
+  ["☽","Moon",      350.2465, "20°14′ Pisces",        5, false],
+  ["☿","Mercury",   212.9526, "2°57′ Scorpio",        1, true ],
+  ["♀","Venus",     227.7870, "17°47′ Scorpio",       1, true ],
+  ["♂","Mars",      126.5559, "6°33′ Leo",           10, false],
+  ["♃","Jupiter",   228.2292, "18°13′ Scorpio",       1, false],
+  ["♄","Saturn",    336.1603, "6°09′ Pisces",         5, true ],
+  ["♅","Uranus",    292.4781, "22°28′ Capricorn",     3, false],
+  ["♆","Neptune",   290.6278, "20°37′ Capricorn",     3, false],
+  ["♇","Pluto",     236.6372, "26°38′ Scorpio",       1, false],
+  ["☊","North Node",224.9180, "14°55′ Scorpio",       1, true ],
+  ["⚷","Chiron",    170.0734, "20°04′ Virgo",        11, false],
+  ["⚵","Juno",      224.9525, "14°57′ Scorpio",       1, false],
+];
+const ASC = 231.4495, MC = 155.8157;
+const SIGN_GLYPHS = ["♈","♉","♊","♋","♌","♍","♎","♏","♐","♑","♒","♓"];
+
+// Planet table
+const tbody = document.getElementById("planet-rows");
+for (const [g, name, lon, disp, house, rx] of PLANETS) {
+  const tr = document.createElement("tr");
+  tr.innerHTML =
+    `<td class="glyph">${g}</td><td>${name}${rx ? ' <span class="rx">℞</span>' : ""}</td>` +
+    `<td class="deg">${disp}</td><td class="deg">${house}</td>`;
+  tbody.appendChild(tr);
+}
+
+// Chart wheel — Asc on the left horizon (standard orientation)
+const svg = document.getElementById("wheel");
+const NS = "http://www.w3.org/2000/svg";
+const CX = 200, CY = 200, R_OUT = 190, R_SIGN = 162, R_TICK = 148, R_PLANET = 118;
+
+function pt(lonDeg, r) {
+  // Asc sits at the left (9 o'clock); zodiac longitude increases counter-clockwise
+  const phi = (180 + (lonDeg - ASC)) * Math.PI / 180;
+  return [CX + r * Math.cos(phi), CY - r * Math.sin(phi)];
+}
+function el(tag, attrs, text) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text) e.textContent = text;
+  svg.appendChild(e);
+  return e;
+}
+
+el("circle", {cx: CX, cy: CY, r: R_OUT,  fill: "#161020", stroke: "#2c2338"});
+el("circle", {cx: CX, cy: CY, r: R_SIGN, fill: "none", stroke: "#2c2338"});
+el("circle", {cx: CX, cy: CY, r: 74,     fill: "#0d0b11", stroke: "#2c2338"});
+
+// Sign boundaries + glyphs
+for (let s = 0; s < 12; s++) {
+  const lon = s * 30;
+  const [x1, y1] = pt(lon, R_SIGN), [x2, y2] = pt(lon, R_OUT);
+  el("line", {x1, y1, x2, y2, stroke: "#2c2338"});
+  const [gx, gy] = pt(lon + 15, (R_SIGN + R_OUT) / 2);
+  el("text", {x: gx, y: gy, fill: "#7b5ea7", "font-size": 15,
+              "text-anchor": "middle", "dominant-baseline": "central"}, SIGN_GLYPHS[s]);
+}
+
+// Asc / MC axes
+for (const [lon, label] of [[ASC, "AC"], [MC, "MC"]]) {
+  const [x1, y1] = pt(lon, 74), [x2, y2] = pt(lon, R_SIGN);
+  el("line", {x1, y1, x2, y2, stroke: "#c9a84c", "stroke-width": 1.2, opacity: 0.8});
+  const [tx, ty] = pt(lon, 90);
+  el("text", {x: tx, y: ty, fill: "#c9a84c", "font-size": 10, "letter-spacing": 1,
+              "text-anchor": "middle", "dominant-baseline": "central"}, label);
+}
+
+// Planets — ticks at true longitude; glyphs fanned apart within tight clusters
+const sorted = PLANETS.map(p => ({glyph: p[0], lon: p[2], disp: p[2]}))
+                      .sort((a, b) => a.lon - b.lon);
+const clusters = [];
+for (const p of sorted) {
+  const last = clusters[clusters.length - 1];
+  if (last && p.lon - last[last.length - 1].lon < 7) last.push(p);
+  else clusters.push([p]);
+}
+for (const c of clusters) {
+  const mean = c.reduce((s, p) => s + p.lon, 0) / c.length;
+  c.forEach((p, i) => { p.disp = mean + (i - (c.length - 1) / 2) * 7.5; });
+}
+for (const p of sorted) {
+  const [tx1, ty1] = pt(p.lon, R_TICK), [tx2, ty2] = pt(p.lon, R_TICK - 8);
+  el("line", {x1: tx1, y1: ty1, x2: tx2, y2: ty2, stroke: "#c9a84c", "stroke-width": 1});
+  const [px, py] = pt(p.disp, R_PLANET);
+  el("text", {x: px, y: py, fill: "#e9e3d5", "font-size": 15,
+              "text-anchor": "middle", "dominant-baseline": "central"}, p.glyph);
+}
+</script>

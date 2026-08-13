@@ -1,0 +1,8 @@
+# JPL ephemeris data for the parked Skyfield experiment (36 MB, regenerate
+# with the commands in SKYFIELD_EXPERIMENT.md)
+ephe_jpl/
+
+__pycache__/
+*.pyc
+.venv/
+.DS_Store

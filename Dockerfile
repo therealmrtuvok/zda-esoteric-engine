@@ -2,16 +2,23 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# pyswisseph is a C extension. Manylinux wheels usually cover this, but if pip
-# has to build from source the image needs a compiler — install one, then drop
-# it so it doesn't ship in the final image.
+# pyswisseph builds from source on slim images and has BOTH C and C++ sources
+# (swephelp/swhdbxx.cpp), so gcc alone is not enough — g++ is required.
+# build-essential covers both; it is purged afterwards so it doesn't ship.
 COPY requirements.txt .
 RUN apt-get update \
- && apt-get install -y --no-install-recommends gcc python3-dev \
+ && apt-get install -y --no-install-recommends build-essential python3-dev \
  && pip install --no-cache-dir -r requirements.txt \
- && apt-get purge -y gcc python3-dev \
+ && apt-get purge -y build-essential python3-dev \
  && apt-get autoremove -y \
  && rm -rf /var/lib/apt/lists/*
+
+# Asteroid ephemeris. Chiron and Juno CANNOT be computed by the built-in
+# Moshier model — they require this data file. Locally it comes from
+# kerykeion's bundled sweph directory; in the image it must ship explicitly.
+# Main planets still fall back to Moshier, which /health verifies.
+COPY data/ephe/ ./data/ephe/
+ENV EPHE_PATH=/app/data/ephe
 
 COPY src/ ./src/
 COPY api/ ./api/

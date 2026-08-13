@@ -51,13 +51,49 @@ API_KEY = os.environ.get("API_KEY")
 _OPEN_PATHS = {"/health", "/", "/docs", "/openapi.json", "/redoc"}
 
 
+# --- Rate limiting ---------------------------------------------------------
+# A chart is a few hundred milliseconds of CPU. Without a cap, one script can
+# keep the machine busy (and billable) indefinitely. In-memory and per-instance,
+# which is the right size for this: it is a blunt abuse stop, not a quota system.
+RATE_LIMIT_PER_MIN = int(os.environ.get("RATE_LIMIT_PER_MIN", "60"))
+_hits: dict[str, list[float]] = {}
+
+
+def _client_ip(request: Request) -> str:
+    # Fly and Cloudflare both put the real client first in X-Forwarded-For.
+    fwd = request.headers.get("X-Forwarded-For") or request.headers.get("Fly-Client-IP")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
 @app.middleware("http")
 async def require_api_key(request: Request, call_next):
-    if API_KEY and request.method != "OPTIONS" \
-            and request.url.path not in _OPEN_PATHS:
+    import time
+
+    path = request.url.path
+    if API_KEY and request.method != "OPTIONS" and path not in _OPEN_PATHS:
         if request.headers.get("X-API-Key") != API_KEY:
             return JSONResponse(status_code=401,
                                 content={"detail": "invalid or missing X-API-Key"})
+
+    if RATE_LIMIT_PER_MIN > 0 and request.method == "POST":
+        now = time.monotonic()
+        ip = _client_ip(request)
+        window = [t for t in _hits.get(ip, []) if now - t < 60]
+        if len(window) >= RATE_LIMIT_PER_MIN:
+            retry = max(1, int(60 - (now - window[0])))
+            return JSONResponse(
+                status_code=429,
+                headers={"Retry-After": str(retry)},
+                content={"detail": f"rate limit: {RATE_LIMIT_PER_MIN} requests/minute"})
+        window.append(now)
+        _hits[ip] = window
+        # keep the dict from growing without bound on a long-lived instance
+        if len(_hits) > 10_000:
+            for k in [k for k, v in _hits.items() if not v or now - v[-1] > 120]:
+                _hits.pop(k, None)
+
     return await call_next(request)
 
 
@@ -405,3 +441,27 @@ def projection(req: ProjectionRequest):
         w.pop("end_jd", None)
     return {"windows": windows,
             "bodies": req.bodies or SLOW_BODIES}
+
+
+# ---------------------------------------------------------------------------
+# Interpretation layer — meaning attached to computed facts.
+# Kept behind its own endpoint so the calculation endpoints stay pure data.
+# ---------------------------------------------------------------------------
+from src.interpretations import interpret_chart
+
+
+@app.post("/interpret")
+def interpret(req: NatalRequest):
+    """Full chart plus interpretation text, in one call."""
+    hour_ut = req.hour + req.minute / 60 - req.timezone_offset_hours
+    try:
+        hd = hd_chart_to_dict(compute_hd_chart(
+            req.year, req.month, req.day, hour_ut, req.latitude, req.longitude))
+        num = numerology_report(DateType(req.year, req.month, req.day))
+        return {
+            "human_design": hd,
+            "numerology": num,
+            "interpretation": interpret_chart(human_design=hd, numerology=num),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

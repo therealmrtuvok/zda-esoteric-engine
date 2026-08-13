@@ -35,7 +35,7 @@ Only `ephemeris_core` ever touches the ephemeris. Everything else consumes its o
 src/
   ephemeris_core.py   positions, speeds, houses, Asc/MC, crossing searches
   astrology.py        signs, Whole Sign + Placidus houses, aspects
-  hd_tables.py        Rave mandala gate wheel, 36 channels, centres
+  hd_tables.py        Alchemy Wheel gate order, 36 channels, centres
   human_design.py     Design date, activations, Type/Authority/Profile/Definition/Variable
   crosses.py          all 192 named incarnation crosses
   derived_charts.py   progressions, solar/lunar returns, profections, synastry, composite, transits
@@ -43,7 +43,7 @@ src/
   hd_transit.py       transit merge state + multi-year channel-activation timeline
   numerology.py       life path, personal year/month/day (no ephemeris)
 tools/
-  gen_bodygraph.py    generates an id-addressable BodyGraph SVG for data-bound rendering
+  gen_design chart.py    generates an id-addressable Design Chart SVG for data-bound rendering
 ```
 
 ## Verification

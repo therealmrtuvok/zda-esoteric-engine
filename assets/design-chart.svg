@@ -1,4 +1,4 @@
-<svg id="bodygraph" viewBox="0 0 440 690" xmlns="http://www.w3.org/2000/svg" font-family="var(--bg-font, Georgia, serif)">
+<svg id="design-chart" viewBox="0 0 440 690" xmlns="http://www.w3.org/2000/svg" font-family="var(--bg-font, Georgia, serif)">
   <g id="channels">
     <g id="channel-47-64" class="channel" data-state="open">
       <path class="half" data-gate="47" d="M200,114 L200,95"/>

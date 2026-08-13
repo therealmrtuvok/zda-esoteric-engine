@@ -85,7 +85,7 @@ FIXTURES = [
                       lat=21.3069, lon=-157.8583),
         "expect": {
             "type": "Projector",
-            "authority": "Emotional — Solar Plexus",
+            "authority": "Emotional (Solar Plexus)",
             "profile": "6/2",
             "definition": "Single Definition",
             "cross_prefix": "Left Angle",
@@ -136,7 +136,7 @@ FIXTURES = [
                       lat=33.0580, lon=-89.5876),
         "expect": {
             "type": "Generator",
-            "authority": "Emotional — Solar Plexus",
+            "authority": "Emotional (Solar Plexus)",
             "profile": "2/4",
             "definition": "Triple Split",
             "cross": "Right Angle Cross of the Four Ways (19/33 | 44/24)",
@@ -153,7 +153,7 @@ FIXTURES = [
         # Born 4 June 1975, 09:09 PDT (UTC-7), Los Angeles, CA — Rodden AA
         # (Astro-Databank, birth certificate).  09:09 -> 16:09 UT.
         # Chart values: flowwithhumandesign.com (Manifesting Generator, 3/5,
-        # Emotional — Solar Plexus, Split Definition, Right Angle Cross of
+        # Emotional (Solar Plexus), Split Definition, Right Angle Cross of
         # Consciousness (35/5 | 63/64)); cross-checked humandesignsystem.co
         # ("3/5 Manifesting Generator - Emotional") and hd-chart.com.
         "name": "Angelina Jolie",
@@ -162,7 +162,7 @@ FIXTURES = [
                       lat=34.0522, lon=-118.2437),
         "expect": {
             "type": "ManifestingGenerator",
-            "authority": "Emotional — Solar Plexus",
+            "authority": "Emotional (Solar Plexus)",
             "profile": "3/5",
             "definition": "Split Definition",
             "cross": "Right Angle Cross of Consciousness (35/5 | 63/64)",

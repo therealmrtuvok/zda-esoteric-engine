@@ -30,7 +30,7 @@ VALID_PROFILES = {(1, 3), (1, 4), (2, 4), (2, 5), (3, 5), (3, 6),
 
 # authority label → the center that must be the highest defined in hierarchy
 AUTHORITY_EXPECT = [
-    ("SolarPlexus", "Emotional — Solar Plexus"),
+    ("SolarPlexus", "Emotional (Solar Plexus)"),
     ("Sacral",      "Sacral"),
     ("Spleen",      "Splenic"),
     ("Heart",       "Ego / Heart"),

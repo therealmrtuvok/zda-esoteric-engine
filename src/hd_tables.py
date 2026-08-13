@@ -7,7 +7,7 @@ validates every entry against a known-correct chart.
 # ---------------------------------------------------------------------------
 # Gate wheel
 # Gate 41 anchors at 302° (2° Aquarius, tropical).
-# The 64 gates proceed in Rave Mandala order with increasing ecliptic longitude.
+# The 64 gates proceed in Alchemy Wheel order with increasing ecliptic longitude.
 # Each gate spans exactly 5.625° (360° / 64).
 # ---------------------------------------------------------------------------
 GATE_ANCHOR_DEGREE = 302.0
@@ -229,7 +229,7 @@ def _motor_connected_to_throat(defined_centers: set[str],
 # Authority hierarchy
 # ---------------------------------------------------------------------------
 AUTHORITY_ORDER = [
-    ("SolarPlexus", "Emotional — Solar Plexus"),
+    ("SolarPlexus", "Emotional (Solar Plexus)"),
     ("Sacral",      "Sacral"),
     ("Spleen",      "Splenic"),
     ("Heart",       "Ego / Heart"),

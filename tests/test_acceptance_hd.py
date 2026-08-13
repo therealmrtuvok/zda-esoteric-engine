@@ -6,7 +6,7 @@ Same reference chart as the astrology test: Barack Obama, 4 Aug 1961
 
 Expected Human Design values are published independently of this engine and
 were cross-checked against two Human Design sources (see test_fixtures.py):
-Projector / Emotional — Solar Plexus / 6-2 / Single Definition / Left Angle,
+Projector / Emotional (Solar Plexus) / 6-2 / Single Definition / Left Angle,
 with only the Root and Solar Plexus centres defined ("a single channel from
 the Root to the Emotional System").
 
@@ -29,7 +29,7 @@ BIRTH = dict(year=1961, month=8, day=5, hour_ut=5 + 24/60,
 EXPECTED = {
     "type":              "Projector",
     "profile":           "6/2",
-    "authority":         "Emotional — Solar Plexus",
+    "authority":         "Emotional (Solar Plexus)",
     "definition":        "Single Definition",
     "incarnation_cross": "Left Angle Cross of Refinement (33/19 | 2/1)",
     "variable":          "PRL DRL",

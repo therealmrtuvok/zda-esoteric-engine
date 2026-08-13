@@ -25,7 +25,7 @@ BIRTH_JD = _hd.birth_julian_day
 def test_transit_sun_gate_at_equinox():
     """
     March 2026 equinox (almanac 2026-03-20 ~14:46 UT): Sun at 0° Aries,
-    which sits inside Gate 25 on the Rave wheel (gate 25 spans
+    which sits inside Gate 25 on the Alchemy Wheel (gate 25 spans
     28°15' Pisces – 3°52.5' Aries). Sun longitude must be <2' from 0° Aries
     and map to gate 25.
     """

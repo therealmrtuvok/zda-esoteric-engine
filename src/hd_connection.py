@@ -81,7 +81,7 @@ def connection_chart(chart_a: HdChart, chart_b: HdChart) -> dict:
 
 def hd_transit_overlay(natal_chart: HdChart, transit_jd: float) -> dict:
     """
-    Current transiting activations overlaid on a natal bodygraph:
+    Current transiting activations overlaid on a natal design chart:
     which gates are lit right now, and which channels/centers become
     temporarily defined by natal+transit gates together.
     """

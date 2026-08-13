@@ -24,7 +24,7 @@ from .hd_tables import (
 from .crosses import cross_name
 
 # The 13 standard HD activation points (same for Personality and Design).
-# Chiron/Juno are astrology-layer bodies only — NOT part of the bodygraph.
+# Chiron/Juno are astrology-layer bodies only — NOT part of the design chart.
 HD_PLANETS = [
     "sun", "earth",    # earth = synthetic (opposite of sun)
     "moon",
@@ -121,7 +121,7 @@ def _compute_variable(p_activations: dict, d_activations: dict) -> str:
     Variable / PHS four arrows.
     Each arrow is Left (odd color: 1,3,5) or Right (even color: 2,4,6).
 
-    Layout (standard HD bodygraph):
+    Layout (standard HD design chart):
       Top-right (Determination): Personality Sun color
       Top-left  (Environment):   Design Sun color
       Bottom-right (Motivation): Personality Earth color

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ZDA BodyGraph — Transit Overlay</title>
+<title>ZDA Design Chart: Transit Overlay</title>
 <style>
   :root {
     /* Hybrid color system (addendum 2, option 3):
@@ -48,7 +48,7 @@
   .graph-col { flex: 0 1 430px; min-width: 320px; }
   .side-col  { flex: 1 1 380px; min-width: 300px; display: flex; flex-direction: column; gap: 18px; }
 
-  /* ---------- bodygraph binding styles (pure data-binding, no per-chart drawing) ---------- */
+  /* ---------- design chart binding styles (pure data-binding, no per-chart drawing) ---------- */
   #graph-holder svg { width: 100%; height: auto; display: block; }
 
   .center { fill: var(--center-open); stroke: var(--gold); stroke-opacity: .45; stroke-width: 1.4; }
@@ -122,7 +122,7 @@
 <div class="wrap">
   <header>
     <p class="eyebrow">Zero Degree Alchemy · Esoteric Engine</p>
-    <h1>BodyGraph — Transit Overlay</h1>
+    <h1>Design Chart: Transit Overlay</h1>
     <p class="sub">Natal chart in traditional colors · what's lighting up now in amethyst</p>
   </header>
 
@@ -201,7 +201,7 @@ const ENGINE_CENTER = {Head:"head", Ajna:"ajna", Throat:"throat", G:"g",
                        Heart:"heart", Sacral:"sacral", Spleen:"spleen",
                        SolarPlexus:"solarplexus", Root:"root"};
 
-let svgReady = fetch("bodygraph.svg").then(r => r.text()).then(t => {
+let svgReady = fetch("design-chart.svg").then(r => r.text()).then(t => {
   document.getElementById("graph-holder").innerHTML = t;
 });
 

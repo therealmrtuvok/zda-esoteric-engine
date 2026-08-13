@@ -1,5 +1,5 @@
 """
-Generates the production bodygraph SVG template (assets/bodygraph.svg).
+Generates the production design chart SVG template (assets/design-chart.svg).
 All geometry lives here and is baked into the static SVG; all color lives
 in CSS variables in the consuming page. Rendering is pure data-binding via
 element ids: center-{name}, gate-{n}, channel-{lo}-{hi}.
@@ -98,7 +98,7 @@ def _parse_curve(d):
 
 def emit():
     out = []
-    out.append(f'<svg id="bodygraph" viewBox="0 0 {W} {H}" '
+    out.append(f'<svg id="design-chart" viewBox="0 0 {W} {H}" '
                f'xmlns="http://www.w3.org/2000/svg" '
                f'font-family="var(--bg-font, Georgia, serif)">')
 
@@ -153,7 +153,7 @@ def emit():
 
 if __name__ == "__main__":
     svg = emit()
-    dest = os.path.join(os.path.dirname(__file__), "..", "assets", "bodygraph.svg")
+    dest = os.path.join(os.path.dirname(__file__), "..", "assets", "design-chart.svg")
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     with open(dest, "w") as f:
         f.write(svg)

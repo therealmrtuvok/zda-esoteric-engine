@@ -264,9 +264,45 @@ from src.hd_connection import connection_chart, hd_transit_overlay
 
 
 class TargetDateRequest(NatalRequest):
-    target_year: int
-    target_month: int
-    target_day: int
+    """
+    A natal chart plus the date to derive against.
+
+    Two accepted shapes, mirroring NatalRequest:
+
+    1. Explicit parts:  {"target_year":2026,"target_month":8,"target_day":13}
+    2. ISO string:      {"target_date":"2026-08-13"}
+
+    Shape 2 exists because every front-end already holds the date as a
+    string and splitting it into three integers at the call site is a
+    step each client would otherwise repeat, and get wrong differently.
+
+    The parts must therefore be Optional: an "after" validator cannot
+    rescue a required field, since field validation has already failed
+    by the time it runs.
+    """
+    target_year: int | None = None
+    target_month: int | None = None
+    target_day: int | None = None
+
+    target_date: str | None = None      # "YYYY-MM-DD"
+
+    @model_validator(mode="after")
+    def _normalise_target(self):
+        if self.target_date:
+            try:
+                y, m, d = (int(p) for p in self.target_date.split("-"))
+            except ValueError:
+                raise ValueError("target_date must be YYYY-MM-DD")
+            self.target_year, self.target_month, self.target_day = y, m, d
+
+        missing = [n for n in ("target_year", "target_month", "target_day")
+                   if getattr(self, n) is None]
+        if missing:
+            raise ValueError(
+                f"missing {', '.join(missing)} — supply either target_date "
+                f"('YYYY-MM-DD') or explicit target_year/target_month/target_day"
+            )
+        return self
 
 
 class PairRequest(BaseModel):

@@ -6,10 +6,10 @@ chart; it only reads finished output and attaches text. That separation matters
 for two reasons: the calculations stay verifiable against external sources, and
 the copy can be rewritten freely without any risk to correctness.
 
-DRAFT COPY. Written to be accurate to the systems and close to ZDA's register.
-direct, unsentimental, no "the universe wants you to". It is meant to be edited
-in Shannon's own voice, not shipped verbatim. Every string is a plain dict entry
-so it can be rewritten without touching code.
+DRAFT COPY. Written to be accurate to the systems and close to ZDA's register:
+direct, unsentimental, no cosmic-instruction voice. It is meant to be edited into
+the practitioner's own voice rather than shipped verbatim. Every string is a plain
+dict entry, so rewriting the copy needs no code changes.
 
 Voice rules followed here:
   - address the reader as "you"

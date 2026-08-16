@@ -30,16 +30,31 @@ Grab the key you just generated (you'll paste it into Pages below):
 fly secrets list        # confirms it's set
 ```
 
-## Point the site at it
+## Point the portal at it
 
-In Cloudflare Pages → your project → **Settings → Environment variables**, add:
+The key goes in **Supabase**, not Cloudflare Pages.
 
-| Name | Value |
-|---|---|
-| `VITE_ENGINE_URL` | `https://zda-esoteric-engine.fly.dev` |
-| `VITE_ENGINE_KEY` | the API key from above |
+The member portal never calls this engine from the browser. It calls a
+Supabase edge function, `engine-proxy`, which holds the key, checks the
+member's tier, and strips the fields that tier has not paid for.
 
-Redeploy the Pages project so the build picks them up.
+```bash
+supabase secrets set ENGINE_URL=https://zda-esoteric-engine.fly.dev
+supabase secrets set ENGINE_API_KEY=the-api-key-from-above
+```
+
+> **Do not put the key in a `VITE_` variable.** An earlier version of this
+> file said to set `VITE_ENGINE_KEY` in Cloudflare Pages, from when the
+> static site called the engine directly. Vite compiles every `VITE_`
+> variable into the JavaScript bundle, so that key would be readable by
+> anyone who opened dev tools. They could then call the engine directly
+> and receive the full, unstripped response for any birth data they liked,
+> which is the exact thing the tier gating exists to prevent.
+>
+> If the marketing site is still deployed with `VITE_ENGINE_KEY` set,
+> treat that key as already public: rotate it with
+> `fly secrets set API_KEY="$(openssl rand -hex 24)"` and move whatever
+> still needs it behind a server.
 
 ## Verify
 

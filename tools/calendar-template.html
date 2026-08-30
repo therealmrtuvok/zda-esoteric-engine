@@ -1,0 +1,1056 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Energy Calendar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f7f4ee; --surface:#ece4d6; --surface2:#efe7da;
+  --border:rgba(121,96,31,.16); --border-mid:rgba(121,96,31,.30);
+  --gold:#79601f; --gold-light:#c9a24b; --gold-dim:#8a7338;
+  --purple:#5b3272; --purple-light:#6d3d88; --purple-glow:rgba(91,50,114,.16);
+  --text:#1c1815; --muted:#5a5148; --dim:#6f665c;
+  --ff-display:"IBM Plex Mono",ui-monospace,monospace;
+  --ff-body:"Inter",system-ui,sans-serif;
+  --ff-serif:"Instrument Serif",Georgia,serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--text);font-family:var(--ff-body);
+  font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--ff-serif);font-weight:400;letter-spacing:-.01em;margin:0}
+h1{font-size:2rem}
+h2{font-size:1.3rem}
+h3{font-size:1.05rem}
+.mono{font-family:var(--ff-display);font-size:.72rem;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--gold)}
+a{color:var(--purple)}
+
+header{border-bottom:1px solid var(--border);padding:22px 26px;
+  display:flex;flex-wrap:wrap;gap:18px 30px;align-items:baseline}
+header .chartline{font-family:var(--ff-display);font-size:.8rem;color:var(--muted)}
+header .chartline b{color:var(--gold);font-weight:500}
+
+.wrap{display:grid;grid-template-columns:290px minmax(0,1fr) 400px;
+  gap:0;align-items:start;min-height:calc(100vh - 84px)}
+@media(max-width:1250px){.wrap{grid-template-columns:1fr}}
+
+aside,.detail{padding:22px 24px;position:sticky;top:0;
+  max-height:100vh;overflow-y:auto}
+aside{border-right:1px solid var(--border)}
+.detail{border-left:1px solid var(--border)}
+/* Both rails scroll inside themselves so the page itself only scrolls with
+   the month grid. The hanging-gate list alone runs to a couple of thousand
+   pixels on an open chart, and it should not drag the calendar off screen. */
+@media(max-width:1250px){
+  aside,.detail{position:static;max-height:none;overflow:visible}
+  aside{border-right:0;border-bottom:1px solid var(--border)}
+  .detail{border-left:0;border-top:1px solid var(--border)}
+}
+main{padding:22px 26px;min-width:0}
+
+.section{margin-bottom:26px}
+.section > .mono{display:block;margin-bottom:10px}
+
+/* ---- filters ---- */
+.filter{display:flex;gap:9px;align-items:flex-start;margin-bottom:11px;
+  font-size:.85rem;color:var(--muted);cursor:pointer}
+.filter input{margin-top:3px;accent-color:var(--purple);flex:none}
+
+/* ---- hanging gates ---- */
+.hg{border:1px solid var(--border);background:var(--surface2);
+  border-radius:6px;padding:10px 12px;margin-bottom:8px}
+.hg .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.hg .g{font-family:var(--ff-display);font-size:.95rem;color:var(--gold)}
+.hg .c{font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+.hg .nm{font-family:var(--ff-serif);font-size:1rem;font-style:italic;color:var(--text)}
+.hg .txt{font-size:.8rem;color:var(--muted);margin-top:5px}
+.hg .wait{font-size:.72rem;color:var(--dim);margin-top:6px;font-family:var(--ff-display)}
+
+/* ---- month grid ---- */
+.mnav{display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap}
+button{font-family:var(--ff-body);font-size:.85rem;cursor:pointer;
+  background:var(--surface);color:var(--text);border:1px solid var(--border-mid);
+  border-radius:5px;padding:6px 13px}
+button:hover{background:var(--surface2);border-color:var(--gold-dim)}
+button:disabled{opacity:.35;cursor:default}
+button.on{background:var(--purple);color:#fff;border-color:var(--purple)}
+
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.dow{font-family:var(--ff-display);font-size:.66rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--dim);text-align:center;padding-bottom:4px}
+.cell{border:1px solid var(--border);background:var(--surface2);border-radius:6px;
+  min-height:96px;padding:7px 8px;cursor:pointer;position:relative;
+  display:flex;flex-direction:column;gap:4px;text-align:left;font-family:var(--ff-body)}
+.cell:hover{border-color:var(--gold-dim)}
+.cell.blank{background:transparent;border-color:transparent;cursor:default;min-height:0}
+.cell.sel{border-color:var(--purple);box-shadow:0 0 0 2px var(--purple-glow)}
+.cell.today{background:var(--surface)}
+.cell .dnum{display:flex;justify-content:space-between;align-items:baseline}
+.cell .dd{font-family:var(--ff-display);font-size:.95rem}
+.cell .pd{font-family:var(--ff-display);font-size:.7rem;color:var(--purple);
+  background:var(--purple-glow);border-radius:3px;padding:1px 5px}
+.cell .sg{font-size:.66rem;color:var(--dim);font-family:var(--ff-display)}
+.pips{display:flex;flex-wrap:wrap;gap:3px;margin-top:auto}
+.pip{height:5px;border-radius:3px;flex:1 1 14px;max-width:26px;min-width:8px}
+.pip.hd{background:var(--gold-light)}
+.pip.hd.answers{background:var(--purple)}
+.pip.sky{background:var(--gold);flex-basis:100%;max-width:none;height:3px}
+.jmark{position:absolute;top:6px;right:6px;width:5px;height:5px;border-radius:50%;
+  background:var(--purple)}
+.ymark{position:absolute;inset:0;border-radius:6px;pointer-events:none;
+  border:2px solid var(--gold-light)}
+.turn{background:var(--surface);border:1px solid var(--gold-dim);border-radius:5px;
+  padding:8px 10px;font-size:.82rem;margin-bottom:11px}
+.cell .evt{font-size:.63rem;color:var(--gold);font-family:var(--ff-display);
+  line-height:1.3;letter-spacing:.02em}
+
+/* ---- detail panel ---- */
+.detail h2{margin-bottom:2px}
+.detail .sub{font-family:var(--ff-display);font-size:.72rem;color:var(--dim);
+  letter-spacing:.06em;text-transform:uppercase;margin-bottom:16px}
+.num{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.numbox{border:1px solid var(--border);border-radius:6px;padding:7px 10px;
+  background:var(--surface2);flex:1 1 84px}
+.numbox .k{font-family:var(--ff-display);font-size:.6rem;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--dim)}
+.numbox .v{font-family:var(--ff-serif);font-size:1.5rem;color:var(--purple);line-height:1.1}
+.body{font-size:.86rem;color:var(--muted);margin:0 0 12px}
+
+.win{border:1px solid var(--border);border-left:3px solid var(--gold-light);
+  background:var(--surface2);border-radius:5px;padding:11px 13px;margin-bottom:9px}
+.win.answers{border-left-color:var(--purple)}
+.win.fleet{opacity:.72;border-left-style:dotted}
+.win .h{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.win .ch{font-family:var(--ff-display);font-size:.86rem;color:var(--gold)}
+.win .nm{font-family:var(--ff-serif);font-size:1.05rem}
+.win .meta{font-family:var(--ff-display);font-size:.65rem;color:var(--dim);
+  letter-spacing:.04em;margin-top:3px}
+.win p{font-size:.82rem;color:var(--muted);margin:8px 0 0}
+.win .lbl{font-family:var(--ff-display);font-size:.6rem;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--gold-dim);margin-top:9px}
+.win ul{margin:5px 0 0;padding-left:17px;font-size:.82rem;color:var(--muted)}
+.win .diff{border-top:1px solid var(--border);margin-top:10px;padding-top:8px;
+  font-size:.8rem;color:var(--text)}
+.win .standing{background:var(--purple-glow);border-radius:4px;padding:7px 9px;
+  font-size:.8rem;margin-top:8px;color:var(--text)}
+.badge{display:inline-block;font-family:var(--ff-display);font-size:.58rem;
+  letter-spacing:.11em;text-transform:uppercase;padding:2px 7px;border-radius:3px;
+  border:1px solid;vertical-align:middle}
+.badge.bridge{color:#fff;background:var(--purple);border-color:var(--purple)}
+.badge.opens{color:var(--text);background:var(--gold-light);border-color:var(--gold-dim)}
+.badge.local{color:var(--dim);background:transparent;border-color:var(--border-mid)}
+.badge.rare{color:var(--paper);background:var(--text);border-color:var(--text)}
+.hg .bar{height:4px;background:var(--border);border-radius:2px;margin:8px 0 5px;
+  overflow:hidden}
+.hg .bar i{display:block;height:100%;background:var(--gold-light)}
+.cell .rarepip{position:absolute;bottom:6px;left:7px;width:0;height:0;
+  border-left:5px solid transparent;border-right:5px solid transparent;
+  border-bottom:7px solid var(--text)}
+.win .struct{font-size:.8rem;color:var(--muted);margin-top:7px;
+  border-top:1px dashed var(--border-mid);padding-top:7px}
+.island{border:1px solid var(--border);background:var(--surface2);border-radius:6px;
+  padding:9px 12px;margin-bottom:7px}
+.island .n{font-family:var(--ff-display);font-size:.7rem;color:var(--gold);
+  letter-spacing:.08em}
+.island .c{font-family:var(--ff-serif);font-size:1.02rem}
+.island .ch{font-family:var(--ff-display);font-size:.66rem;color:var(--dim)}
+
+.skyev{font-size:.84rem;color:var(--text);border-bottom:1px solid var(--border);
+  padding:7px 0}
+.skyev:last-child{border-bottom:0}
+.skyev b{font-family:var(--ff-display);font-size:.76rem;color:var(--gold);
+  letter-spacing:.04em;text-transform:uppercase}
+
+textarea{width:100%;min-height:170px;resize:vertical;font-family:var(--ff-body);
+  font-size:.88rem;line-height:1.6;padding:11px 12px;border-radius:6px;
+  border:1px solid var(--border-mid);background:var(--paper);color:var(--text)}
+textarea:focus{outline:2px solid var(--purple-glow);border-color:var(--purple)}
+.saved{font-family:var(--ff-display);font-size:.65rem;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--gold-dim);height:14px;margin-top:5px}
+.empty{font-size:.85rem;color:var(--dim);font-style:italic}
+
+/* ---- view switcher ---- */
+.tabs{display:flex;gap:6px;margin-left:auto}
+.tabs button{border-radius:5px}
+.view{display:none}
+.view.on{display:block}
+/* .view.on is more specific than .wrap, so without this the calendar's three
+   column grid collapses to a single block when the tabs were added. */
+.wrap.view.on{display:grid}
+
+/* ---- design chart ---- */
+/* Capped rather than 1fr: on a wide screen a free right column runs to about
+   900px, and body text that wide is unreadable. */
+.chartwrap{display:grid;grid-template-columns:minmax(300px,520px) minmax(0,620px);
+  gap:44px;align-items:start;justify-content:start}
+@media(max-width:1000px){.chartwrap{grid-template-columns:1fr;gap:26px}}
+#design-chart{width:100%;height:auto;max-height:80vh;display:block}
+
+/* Two natal colours, one transit colour. Personality is the dark one and
+   Design the gold one, which is this palette's stand-in for the usual
+   black and red. Purple means transit throughout the whole page, so a
+   purple half here reads the same as a purple pip in the grid. */
+.center{stroke:var(--border-mid);stroke-width:1.5;fill:var(--surface2)}
+.center[data-state="personality"],
+.center[data-state="design"],
+.center[data-state="both"]{fill:var(--gold-light);stroke:var(--gold-dim)}
+.center[data-state="transit"]{fill:var(--purple-glow);stroke:var(--purple);
+  stroke-dasharray:4 3}
+
+.channel .half{stroke:var(--border);stroke-width:5;stroke-linecap:butt;fill:none}
+.channel .half[data-state="personality"]{stroke:var(--text)}
+.channel .half[data-state="design"]{stroke:var(--gold-light)}
+.channel .half[data-state="both"]{stroke:var(--gold-dim)}
+.channel .half[data-state="transit"]{stroke:var(--purple)}
+.channel{cursor:pointer}
+.channel:hover .half{stroke-width:7}
+
+.gate circle{fill:var(--surface2);stroke:var(--border-mid);stroke-width:1}
+.gate text{fill:var(--dim);font-family:var(--ff-display)}
+.gate[data-state="personality"] circle{fill:var(--text);stroke:var(--text)}
+.gate[data-state="personality"] text{fill:var(--paper)}
+.gate[data-state="design"] circle{fill:var(--gold-light);stroke:var(--gold-dim)}
+.gate[data-state="design"] text{fill:var(--text)}
+.gate[data-state="both"] circle{fill:var(--gold-dim);stroke:var(--text)}
+.gate[data-state="both"] text{fill:var(--paper)}
+.gate[data-state="transit"] circle{fill:var(--purple);stroke:var(--purple)}
+.gate[data-state="transit"] text{fill:#fff}
+.gate.hanging circle{stroke:var(--purple);stroke-width:2.5;stroke-dasharray:3 2}
+.gate{cursor:pointer}
+.gate:hover circle{stroke-width:3}
+
+.chartlegend{display:flex;flex-wrap:wrap;gap:9px 16px;font-family:var(--ff-display);
+  font-size:.66rem;letter-spacing:.05em;color:var(--dim);margin-top:14px}
+.chartlegend span{display:flex;align-items:center;gap:5px}
+.chartlegend i{width:13px;height:13px;border-radius:50%;display:inline-block;flex:none}
+#chartinfo{border:1px solid var(--border);border-left:3px solid var(--purple);
+  background:var(--surface2);border-radius:5px;padding:12px 14px;margin-bottom:16px;
+  min-height:76px}
+#chartinfo .ttl{font-family:var(--ff-serif);font-size:1.1rem}
+#chartinfo .sub{font-family:var(--ff-display);font-size:.66rem;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--gold-dim);margin-bottom:5px}
+#chartinfo p{font-size:.84rem;color:var(--muted);margin:7px 0 0}
+.chartdate{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.chartdate .d{font-family:var(--ff-serif);font-size:1.25rem}
+.statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));
+  gap:8px;margin-bottom:16px}
+.statgrid .numbox .v{font-size:1rem;font-family:var(--ff-display);color:var(--text)}
+.statgrid .numbox{cursor:pointer;transition:border-color .12s}
+.statgrid .numbox:hover{border-color:var(--gold-dim);background:var(--surface)}
+.statgrid .numbox .more{font-family:var(--ff-display);font-size:.55rem;
+  letter-spacing:.1em;color:var(--gold-dim);margin-top:4px}
+
+/* ---- explanation panel ---- */
+.scrim{position:fixed;inset:0;background:rgba(28,24,21,.42);z-index:40;
+  display:none;align-items:flex-start;justify-content:center;padding:5vh 20px;
+  overflow-y:auto}
+.scrim.on{display:flex}
+.modal{background:var(--paper);border:1px solid var(--border-mid);border-radius:9px;
+  max-width:640px;width:100%;padding:28px 32px 32px;position:relative;
+  box-shadow:0 18px 50px rgba(28,24,21,.18)}
+.modal .kicker{font-family:var(--ff-display);font-size:.64rem;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--gold);margin-bottom:6px}
+.modal h3{font-size:1.7rem;margin-bottom:2px}
+.modal .share{font-family:var(--ff-display);font-size:.68rem;color:var(--dim);
+  letter-spacing:.05em;margin-bottom:16px}
+.modal .lede{font-family:var(--ff-serif);font-size:1.15rem;font-style:italic;
+  color:var(--text);margin:0 0 14px;line-height:1.45}
+.modal p{font-size:.92rem;color:var(--muted);margin:0 0 13px;line-height:1.62}
+.modal .block{border-left:3px solid var(--gold-light);background:var(--surface2);
+  border-radius:0 5px 5px 0;padding:11px 14px;margin:0 0 12px}
+.modal .block .bk{font-family:var(--ff-display);font-size:.6rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--gold-dim);margin-bottom:4px}
+.modal .block p{margin:0;color:var(--text);font-size:.89rem}
+.modal .close{position:absolute;top:14px;right:16px;background:none;border:0;
+  font-size:1.3rem;line-height:1;color:var(--dim);padding:5px 9px}
+.modal .close:hover{color:var(--text);background:var(--surface)}
+.modal .gateline{display:flex;gap:10px;align-items:baseline;padding:7px 0;
+  border-bottom:1px solid var(--border);font-size:.86rem}
+.modal .gateline:last-child{border-bottom:0}
+.modal .gateline b{font-family:var(--ff-display);color:var(--gold);flex:none;
+  min-width:70px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.72rem;color:var(--dim);
+  margin-top:14px;font-family:var(--ff-display)}
+.legend span{display:flex;align-items:center;gap:5px}
+.sw{width:16px;height:5px;border-radius:3px;display:inline-block}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Energy Calendar</h1>
+    <div class="mono" id="range"></div>
+  </div>
+  <div class="chartline" id="chartline"></div>
+  <div class="tabs">
+    <button id="tabCal" class="on">Calendar</button>
+    <button id="tabChart">Design Chart</button>
+  </div>
+</header>
+
+<div class="wrap view on" id="viewCal">
+
+  <aside>
+    <div class="section">
+      <span class="mono">Show</span>
+      <label class="filter"><input type="checkbox" id="fAnswer">
+        <span>Only windows that answer a hanging gate of mine</span></label>
+      <label class="filter"><input type="checkbox" id="fFleet">
+        <span>Include Moon windows (a few hours each, tagged passing)</span></label>
+      <label class="filter"><input type="checkbox" id="fRare">
+        <span>Only rare windows: gates of mine answered on fewer than a sixth
+          of the days in this range</span></label>
+      <label class="filter"><input type="checkbox" id="fJournal">
+        <span>Only days I have written on</span></label>
+    </div>
+
+    <div class="section">
+      <span class="mono">My hanging gates</span>
+      <p class="body" style="margin-top:-4px">Gates you carry with the other
+        half of the channel undefined. These are standing open questions. A
+        transit or another person answers them. Nothing else does.</p>
+      <div id="hanging"></div>
+    </div>
+
+    <div class="section" id="standingSection" hidden>
+      <span class="mono">Defined for the whole period</span>
+      <p class="body" style="margin-top:-4px">A slow planet is holding one half
+        of these for the entire range. Background condition, not an event, so
+        they are not marked on individual days.</p>
+      <div id="standing"></div>
+    </div>
+
+    <div class="section">
+      <span class="mono">Journal</span>
+      <button id="export">Export all entries</button>
+      <div class="saved" id="exportnote"></div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="mnav">
+      <button id="prev">&larr;</button>
+      <h2 id="mlabel"></h2>
+      <button id="next">&rarr;</button>
+      <button id="todayBtn">Today</button>
+    </div>
+    <div class="grid" id="dow"></div>
+    <div class="grid" id="grid"></div>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--purple)"></i> answers a hanging gate</span>
+      <span><i class="sw" style="background:var(--gold-light)"></i> other channel window</span>
+      <span><i class="sw" style="background:var(--gold);height:3px"></i> sky event</span>
+      <span><i class="sw" style="background:var(--purple);width:5px;height:5px;border-radius:50%"></i> journal entry</span>
+      <span><i class="sw" style="background:var(--text);width:9px;height:7px;border-radius:1px"></i> rare window open</span>
+      <span><i class="sw" style="background:transparent;border:2px solid var(--gold-light);width:14px;height:10px;border-radius:3px"></i> personal year turns</span>
+      <span style="width:100%;color:var(--dim)">Badges on each window: <b
+        class="badge bridge" style="font-size:.55rem">bridge</b> joins two
+        islands, <b class="badge opens" style="font-size:.55rem">opens</b>
+        defines your Head, <b class="badge local" style="font-size:.55rem">local</b>
+        changes nothing structural.</span>
+    </div>
+  </main>
+
+  <div class="detail" id="detail"></div>
+</div>
+
+<section class="view" id="viewChart" style="padding:24px 26px">
+  <div class="chartwrap">
+    <div>
+      <div class="chartdate">
+        <button id="cPrev">&larr;</button>
+        <span class="d" id="cDate"></span>
+        <button id="cNext">&rarr;</button>
+        <button id="cNatal">Natal only</button>
+      </div>
+      __DESIGN_CHART_SVG__
+      <div class="chartlegend">
+        <span><i style="background:var(--text)"></i> Personality</span>
+        <span><i style="background:var(--gold-light)"></i> Design</span>
+        <span><i style="background:var(--gold-dim)"></i> both</span>
+        <span><i style="background:var(--purple)"></i> transit today</span>
+        <span><i style="background:var(--surface2);border:2.5px dashed var(--purple)"></i> hanging</span>
+      </div>
+    </div>
+
+    <div>
+      <div id="chartinfo">
+        <div class="sub">Click any gate or channel</div>
+        <div class="ttl">Your Design Chart</div>
+        <p>Filled centres are defined and run consistently. Empty centres take
+          in and amplify whatever is around you. A dashed gate is hanging: you
+          carry it, the other half of its channel is missing.</p>
+      </div>
+      <div class="statgrid" id="cStats"></div>
+      <div class="section">
+        <span class="mono">Your islands of definition</span>
+        <p class="body" style="margin-top:-4px">Definition is not one property,
+          it is a count of disconnected pieces. These never touch on their own.</p>
+        <div id="cIslands"></div>
+      </div>
+
+      <div class="section" id="cBridgeSection">
+        <span class="mono">Gates that bridge two islands</span>
+        <p class="body" style="margin-top:-4px">The only gates whose arrival
+          joins two parts of you. Everything else either adds capacity or
+          changes nothing structural.</p>
+        <div id="cBridges"></div>
+      </div>
+
+      <div class="section">
+        <span class="mono">Defined natally, always on</span>
+        <div id="cDefined"></div>
+      </div>
+      <div class="section">
+        <span class="mono">Completed by transit on this date</span>
+        <div id="cTransit"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="scrim" id="scrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <button class="close" id="mClose" aria-label="Close">&times;</button>
+    <div id="mBody"></div>
+  </div>
+</div>
+
+<script>
+const DATA = __CALENDAR_DATA__;
+
+const winById = Object.fromEntries(DATA.hd_windows.map(w => [w.id, w]));
+const aspById = Object.fromEntries(DATA.aspect_windows.map(w => [w.id, w]));
+const dayByDate = Object.fromEntries(DATA.days.map(d => [d.date, d]));
+const JKEY = "zda-energy-journal:" + DATA.meta.birth_date;
+
+const journal = JSON.parse(localStorage.getItem(JKEY) || "{}");
+const saveJournal = () => localStorage.setItem(JKEY, JSON.stringify(journal));
+
+const F = {answers:false, fleeting:false, journalled:false, rare:false};
+let selected = null, monthIdx = 0;
+
+/* Months present in the data, in order. */
+const months = [...new Set(DATA.days.map(d => d.date.slice(0,7)))].sort();
+const MONTH_NAMES = ["January","February","March","April","May","June","July",
+  "August","September","October","November","December"];
+const fmtMonth = k => {
+  const [y,m] = k.split("-");
+  return MONTH_NAMES[+m-1] + " " + y;
+};
+const fmtDate = iso => {
+  const [y,m,d] = iso.split("-");
+  return `${+d} ${MONTH_NAMES[+m-1]} ${y}`;
+};
+const titleCase = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+/* A window is worth showing if it passes the current filters. */
+function visibleWindows(day){
+  return day.hd_windows.map(id => winById[id])
+    .filter(w => !w.standing)          // shown once in the rail, not per day
+    .filter(w => F.fleeting || !w.fleeting)
+    .filter(w => !F.answers || w.held_gate != null)
+    .filter(w => !F.rare || w.rare);
+}
+function dayVisible(day){
+  if (F.journalled && !journal[day.date]) return false;
+  return true;
+}
+
+/* ---------- header + rail ---------- */
+document.getElementById("range").textContent =
+  DATA.meta.generated_for_range.map(fmtDate).join("  to  ") +
+  "   ·   " + DATA.meta.days + " days";
+
+const c = DATA.chart;
+document.getElementById("chartline").innerHTML =
+  `<b>${c.type}</b> &nbsp;·&nbsp; profile <b>${c.profile}</b> &nbsp;·&nbsp; ` +
+  `<b>${c.authority}</b> authority &nbsp;·&nbsp; <b>${c.definition}</b> ` +
+  `&nbsp;·&nbsp; life path <b>${c.life_path}</b> &nbsp;·&nbsp; ` +
+  `${c.defined_channels.length} defined channels &nbsp;·&nbsp; ` +
+  `${DATA.hanging_gates.length} hanging gates`;
+
+const standing = DATA.standing_windows || [];
+if (standing.length){
+  document.getElementById("standingSection").hidden = false;
+  document.getElementById("standing").innerHTML = standing.map(w => `
+    <div class="hg">
+      <div class="top"><span class="g">${w.channel}</span>
+        <span class="c">${w.centers.join(" &middot; ")}</span></div>
+      <div class="nm">${w.name}</div>
+      <div class="txt">${w.held_gate != null
+        ? `Your gate ${w.held_gate}. Gate ${w.supplied_gate} held by
+           ${w.planets.filter(p => p !== "moon").join(", ")} throughout.`
+        : "Both halves from transit, so this is weather rather than yours."}</div>
+      <div class="wait">${w.span_days} days of ${DATA.meta.days}</div>
+    </div>`).join("");
+}
+
+document.getElementById("hanging").innerHTML = DATA.hanging_gates.map(g => `
+  <div class="hg">
+    <div class="top">
+      <span class="g">Gate ${g.gate}</span>
+      <span class="c">${g.center}</span>
+    </div>
+    <div class="nm">${g.name} ${badge(g.effect,
+      (g.effects.find(e => e.effect === "bridge") || {}).joins)}</div>
+    <div class="txt">${g.hanging}</div>
+    <div class="bar"><i style="width:${Math.max(1.5, g.answered_pct)}%"></i></div>
+    <div class="wait">answered ${g.answered_days} of ${DATA.meta.days} days
+      (${g.answered_pct}%) &nbsp;·&nbsp; waiting on ${g.waiting_on.join(" or ")}</div>
+  </div>`).join("");
+
+/* ---------- month grid ---------- */
+function renderDow(){
+  document.getElementById("dow").innerHTML =
+    ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+      .map(d => `<div class="dow">${d}</div>`).join("");
+}
+
+function renderGrid(){
+  const key = months[monthIdx];
+  document.getElementById("mlabel").textContent = fmtMonth(key);
+  document.getElementById("prev").disabled = monthIdx === 0;
+  document.getElementById("next").disabled = monthIdx === months.length - 1;
+
+  const days = DATA.days.filter(d => d.date.startsWith(key));
+  const first = days[0];
+  // Monday-first offset
+  const lead = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].indexOf(first.weekday);
+  const todayISO = new Date().toISOString().slice(0,10);
+
+  let html = "";
+  for (let i = 0; i < lead; i++) html += `<div class="cell blank"></div>`;
+
+  for (const d of days){
+    const wins = visibleWindows(d);
+    const dim = dayVisible(d) ? "" : "opacity:.28;";
+    const pips = wins.slice(0,6).map(w =>
+      `<i class="pip hd${w.held_gate != null ? " answers" : ""}"></i>`).join("");
+    const skyPip = d.sky.length ? `<i class="pip sky"></i>` : "";
+    const evt = d.sky.length
+      ? `<div class="evt">${d.sky.map(skyShort).join("<br>")}</div>` : "";
+    html += `<button class="cell${selected===d.date?" sel":""}${d.date===todayISO?" today":""}"
+        style="${dim}" data-date="${d.date}">
+        ${journal[d.date] ? '<i class="jmark"></i>' : ''}
+        ${d.personal_year_starts ? '<i class="ymark" title="personal year turns"></i>' : ''}
+        ${wins.some(w => w.rare) ? '<i class="rarepip" title="a rare window is open"></i>' : ''}
+        <div class="dnum"><span class="dd">${+d.date.slice(8)}</span>
+          <span class="pd" title="personal day">${d.personal_day}</span></div>
+        <div class="sg">gate ${d.sun_gate}.${d.sun_line}</div>
+        ${evt}
+        <div class="pips">${pips}${skyPip}</div>
+      </button>`;
+  }
+  document.getElementById("grid").innerHTML = html;
+  document.querySelectorAll(".cell[data-date]").forEach(el =>
+    el.onclick = () => select(el.dataset.date));
+}
+
+function skyShort(e){
+  if (e.kind === "station")
+    return `${titleCase(e.body)} ${e.direction === "retrograde" ? "Rx" : "D"}`;
+  if (e.kind === "eclipse")
+    return `${e.eclipse_kind} ${e.body === "sun" ? "solar" : "lunar"} eclipse`;
+  if (e.kind === "lunation")
+    return `${e.phase} moon ${e.sign}`;
+  if (e.kind === "ingress")
+    return `${titleCase(e.body.replace("true_node","N node"))} &rarr; ${e.sign}`;
+  return e.kind;
+}
+
+function skyLong(e){
+  if (e.kind === "station")
+    return `<b>Station</b> ${titleCase(e.body)} turns ` +
+      `${e.direction} at ${e.degree}&deg; ${e.sign}.`;
+  if (e.kind === "eclipse")
+    return `<b>Eclipse</b> ${e.eclipse_kind} ` +
+      `${e.body === "sun" ? "solar" : "lunar"} eclipse at ` +
+      `${e.degree}&deg; ${e.sign}.`;
+  if (e.kind === "lunation")
+    return `<b>${e.phase} moon</b> at ${e.degree}&deg; ${e.sign}.`;
+  if (e.kind === "ingress")
+    return `<b>Ingress</b> ${titleCase(e.body.replace("true_node","North node"))} ` +
+      `enters ${e.sign}${e.direction === "retrograde" ? ", retrograde" : ""}.`;
+  return e.kind;
+}
+
+/* ---------- day detail ---------- */
+function select(iso){
+  selected = iso;
+  renderGrid();
+  renderDetail();
+}
+
+function renderDetail(){
+  const el = document.getElementById("detail");
+  if (!selected){ el.innerHTML =
+    `<p class="empty">Pick a day to see what is running on it.</p>`; return; }
+  const d = dayByDate[selected];
+  const wins = visibleWindows(d);
+  const exact = d.aspects_exact.map(id => aspById[id]);
+  const active = d.aspects_active.map(id => aspById[id])
+                  .filter(w => !d.aspects_exact.includes(w.id));
+
+  el.innerHTML = `
+    <h2>${fmtDate(d.date)}</h2>
+    <div class="sub">${d.weekday} &nbsp;·&nbsp; Sun in gate ${d.sun_gate}.${d.sun_line},
+      ${d.sun_degree}&deg; ${d.sun_sign}</div>
+
+    <div class="num">
+      <div class="numbox"><div class="k">Personal day</div><div class="v">${d.personal_day}</div></div>
+      <div class="numbox"><div class="k">Month</div><div class="v">${d.personal_month}</div></div>
+      <div class="numbox"><div class="k">Year</div><div class="v">${d.personal_year}</div></div>
+    </div>
+    ${d.personal_year_starts ? `<div class="turn">Your personal year turns
+      today. Year ${d.personal_year} begins and runs to your next birthday.</div>` : ""}
+    <p class="body">${d.personal_day_text}</p>
+    <p class="body" style="color:var(--dim)">Month: ${d.personal_month_text}</p>
+    <p class="body" style="color:var(--dim)">Year: ${d.personal_year_text}</p>
+
+    <div class="section"><span class="mono">Collective backdrop</span>
+      <p class="body">Gate ${d.sun_gate}, ${d.sun_gate_name}. ${d.sun_gate_theme}</p>
+    </div>
+
+    ${d.sky.length ? `<div class="section"><span class="mono">Sky</span>
+      ${d.sky.map(e => `<div class="skyev">${skyLong(e)}</div>`).join("")}</div>` : ""}
+
+    <div class="section">
+      <span class="mono">Channels open today (${wins.length})</span>
+      ${wins.length ? wins.map(renderWin).join("")
+        : `<p class="empty">No transit is completing a channel for you today.
+           The numbers and the sky still apply.</p>`}
+    </div>
+
+    ${exact.length || active.length ? `<div class="section">
+      <span class="mono">Transits to your chart</span>
+      ${exact.map(w => `<div class="skyev"><b>Exact today</b>
+        ${titleCase(w.transit_body)} ${w.symbol} ${titleCase(w.natal_point)}
+        (${w.aspect.toLowerCase()} to your natal ${w.natal_point})</div>`).join("")}
+      ${active.map(w => `<div class="skyev" style="color:var(--dim)">
+        ${titleCase(w.transit_body)} ${w.symbol} ${titleCase(w.natal_point)}
+        in orb, ${fmtDate(w.start)} to ${fmtDate(w.end)}${
+          w.exact.length ? ", exact " + w.exact.map(fmtDate).join(" and ") : ""}</div>`).join("")}
+    </div>` : ""}
+
+    <div class="section">
+      <span class="mono">What happened</span>
+      <textarea id="entry" placeholder="What actually happened today. Write it before you know what it meant.">${
+        (journal[d.date] || "").replace(/</g,"&lt;")}</textarea>
+      <div class="saved" id="savenote"></div>
+    </div>`;
+
+  const ta = document.getElementById("entry");
+  let t;
+  ta.addEventListener("input", () => {
+    clearTimeout(t);
+    t = setTimeout(() => {
+      const v = ta.value.trim();
+      if (v) journal[d.date] = v; else delete journal[d.date];
+      saveJournal();
+      const n = document.getElementById("savenote");
+      n.textContent = "saved";
+      setTimeout(() => { n.textContent = ""; }, 1400);
+      renderGrid();
+    }, 400);
+  });
+}
+
+function badge(effect, joins){
+  if (!effect || effect === "already") return "";
+  const label = effect === "bridge" ? "bridge " + (joins || []).join(" &harr; ")
+              : effect === "opens" ? "opens Head" : "local";
+  return `<span class="badge ${effect}">${label}</span>`;
+}
+
+function renderWin(w){
+  const answers = w.held_gate != null;
+  return `<div class="win${answers ? " answers" : ""}${w.fleeting ? " fleet" : ""}">
+    <div class="h"><span class="ch">${w.channel} ${badge(w.effect, w.joins)}
+      ${w.rare ? `<span class="badge rare">rare, ${w.scarcity_pct}%</span>` : ""}</span>
+      <span class="nm">${w.name}</span></div>
+    <div class="meta">${w.centers.join(" &ndash; ")} &nbsp;·&nbsp;
+      ${fmtDate(w.start)} to ${fmtDate(w.end)} &nbsp;·&nbsp;
+      via ${w.planets.join(", ")}${w.fleeting ? " &nbsp;·&nbsp; passing, hours not days" : ""}</div>
+    ${answers ? `<div class="standing"><b>Your gate ${w.held_gate}</b>,
+        ${w.gates[w.held_gate].name}. ${w.standing_condition}
+        <br><b>Gate ${w.supplied_gate} arrives</b> from ${w.planets.join(", ")}.</div>`
+      : `<div class="standing" style="background:var(--surface)">
+        Both halves come from transit. You do not carry either gate, so this is
+        weather passing through rather than something of yours being completed.</div>`}
+    <p>${w.transit_gift}</p>
+    <div class="lbl">Good for</div>
+    <ul>${w.good_for.map(g => `<li>${g}</li>`).join("")}</ul>
+    <div class="lbl">Mechanic</div>
+    <p style="margin-top:3px">${w.mechanic}</p>
+    <div class="diff"><b>The cost.</b> ${w.difficulty}</div>
+    ${w.structure_note ? `<div class="struct"><b>Structurally.</b>
+      ${w.structure_note}</div>` : ""}
+    <div class="meta" style="margin-top:8px">${w.center_effect}</div>
+  </div>`;
+}
+
+/* ---------- export ---------- */
+document.getElementById("export").onclick = () => {
+  const dates = Object.keys(journal).sort();
+  if (!dates.length){
+    document.getElementById("exportnote").textContent = "nothing written yet";
+    return;
+  }
+  const md = dates.map(dt => {
+    const d = dayByDate[dt];
+    const head = d
+      ? `## ${fmtDate(dt)}\n\nPersonal day ${d.personal_day}, month ${d.personal_month}, ` +
+        `year ${d.personal_year}. Sun in gate ${d.sun_gate}.${d.sun_line}.` +
+        (d.hd_windows.length
+          ? `\nChannels open: ${d.hd_windows.map(id => winById[id].channel).join(", ")}.`
+          : "")
+      : `## ${fmtDate(dt)}`;
+    return head + "\n\n" + journal[dt] + "\n";
+  }).join("\n---\n\n");
+  const blob = new Blob(["# Energy journal\n\n" + md], {type:"text/markdown"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "energy-journal.md";
+  a.click();
+  URL.revokeObjectURL(a.href);
+  document.getElementById("exportnote").textContent = dates.length + " entries exported";
+};
+
+/* ---------- design chart ---------- */
+const P_GATES = new Set(DATA.chart.personality_gates);
+const D_GATES = new Set(DATA.chart.design_gates);
+const HANGING = new Set(DATA.hanging_gates.map(g => g.gate));
+const NATAL_CENTERS = new Set(DATA.chart.defined_centers.map(c => c.toLowerCase()));
+const M = DATA.meanings;
+
+/* Geometry comes from the SVG itself rather than a second copy of the tables.
+   Every gate carries data-center and every channel id names its two gates. */
+const SVG_GATE_CENTER = {}, SVG_CHANNELS = [];
+document.querySelectorAll("#design-chart .gate").forEach(g => {
+  SVG_GATE_CENTER[+g.id.slice(5)] = g.dataset.center;
+});
+document.querySelectorAll("#design-chart .channel").forEach(c => {
+  const [a, b] = c.id.slice(8).split("-").map(Number);
+  SVG_CHANNELS.push({el: c, a, b, key: c.id.slice(8)});
+});
+
+let chartDate = null, chartShowTransit = true;
+
+function gateState(g, tGates){
+  const p = P_GATES.has(g), d = D_GATES.has(g);
+  if (p && d) return "both";
+  if (p) return "personality";
+  if (d) return "design";
+  if (chartShowTransit && tGates.has(g)) return "transit";
+  return "open";
+}
+
+function renderChart(){
+  if (!chartDate) chartDate = selected || DATA.days[0].date;
+  const day = dayByDate[chartDate];
+  const tGates = new Set(Object.keys(day.transit_gates).map(Number));
+  document.getElementById("cDate").textContent = fmtDate(chartDate);
+  document.getElementById("cNatal").classList.toggle("on", !chartShowTransit);
+  document.getElementById("cNatal").textContent =
+    chartShowTransit ? "Natal only" : "Show transits";
+
+  for (let g = 1; g <= 64; g++){
+    const el = document.getElementById("gate-" + g);
+    if (!el) continue;
+    el.dataset.state = gateState(g, tGates);
+    el.classList.toggle("hanging", HANGING.has(g));
+  }
+
+  const liveCenters = new Set();
+  for (const ch of SVG_CHANNELS){
+    const sa = gateState(ch.a, tGates), sb = gateState(ch.b, tGates);
+    ch.el.querySelector('.half[data-gate="' + ch.a + '"]').dataset.state = sa;
+    ch.el.querySelector('.half[data-gate="' + ch.b + '"]').dataset.state = sb;
+    if (sa !== "open" && sb !== "open"){
+      liveCenters.add(SVG_GATE_CENTER[ch.a]);
+      liveCenters.add(SVG_GATE_CENTER[ch.b]);
+    }
+  }
+  document.querySelectorAll("#design-chart .center").forEach(c => {
+    const key = c.id.slice(7);
+    c.dataset.state = NATAL_CENTERS.has(key) ? "both"
+                    : (liveCenters.has(key) ? "transit" : "open");
+  });
+
+  const c = DATA.chart;
+  document.getElementById("cStats").innerHTML = [
+    ["Type", c.type, "type"], ["Profile", c.profile, "profile"],
+    ["Authority", c.authority, "authority"], ["Definition", c.definition, "definition"],
+    ["Strategy", c.strategy, "type"], ["Not-self theme", c.not_self_theme, "type"],
+    ["Cross", c.incarnation_cross, "cross"], ["Variable", c.variable, "variable"],
+    ["Life path", c.life_path, "lifepath"],
+  ].map(([k, v, topic]) => `<div class="numbox" data-topic="${topic}">
+      <div class="k">${k}</div><div class="v">${v}</div>
+      <div class="more">explain &rarr;</div></div>`).join("");
+  document.querySelectorAll("#cStats .numbox").forEach(el =>
+    el.onclick = () => explain(el.dataset.topic));
+
+  document.getElementById("cIslands").innerHTML =
+    (c.islands || []).map(i => `<div class="island">
+      <div class="n">Island ${i.index}</div>
+      <div class="c">${i.centers.join(" + ")}</div>
+      <div class="ch">held by ${i.channels.join(", ") || "nothing"}</div>
+    </div>`).join("") +
+    (c.undefined_centers && c.undefined_centers.length
+      ? `<div class="island" style="border-style:dashed">
+          <div class="n">Open</div>
+          <div class="c">${c.undefined_centers.join(" + ")}</div>
+          <div class="ch">no channel of yours defines this</div></div>` : "");
+
+  const bg = c.bridge_gates || {};
+  const bgKeys = Object.keys(bg);
+  document.getElementById("cBridgeSection").hidden = bgKeys.length === 0;
+  document.getElementById("cBridges").innerHTML = bgKeys.map(g => {
+    const b = bg[g];
+    return `<div class="hg" data-ch="${b.channel}" style="cursor:pointer">
+      <div class="top"><span class="g">Gate ${g}</span>
+        <span class="c">joins ${b.joins.join(" &harr; ")}</span></div>
+      <div class="nm">${b.name}</div>
+      <div class="txt">${b.theme}</div>
+      <div class="wait">completes ${b.channel} with your gate
+        ${b.completes_your_gate}</div>
+    </div>`;
+  }).join("");
+
+  document.getElementById("cDefined").innerHTML = c.defined_channels.map(k => {
+    const m = M.channels[k];
+    return `<div class="hg" data-ch="${k}" style="cursor:pointer">
+      <div class="top"><span class="g">${k}</span>
+        <span class="c">${m.centers.join(" &middot; ")}</span></div>
+      <div class="nm">${m.name}</div></div>`;
+  }).join("");
+
+  const opened = day.hd_windows.map(id => winById[id])
+    .filter(w => !w.standing || true);
+  document.getElementById("cTransit").innerHTML = opened.length
+    ? opened.map(w => `<div class="hg" data-ch="${w.channel}" style="cursor:pointer">
+        <div class="top"><span class="g">${w.channel} ${badge(w.effect, w.joins)}</span>
+          <span class="c">${w.fleeting ? "moon, hours" : w.planets.join(", ")}</span></div>
+        <div class="nm">${w.name}</div>
+        <div class="txt">${w.held_gate != null
+          ? `Your gate ${w.held_gate}, plus gate ${w.supplied_gate} from outside.`
+          : "Both halves from transit. Weather, not yours."}</div></div>`).join("")
+    : `<p class="empty">Nothing is completing a channel for you on this date.</p>`;
+
+  document.querySelectorAll("[data-ch]").forEach(el =>
+    el.onclick = () => showChannel(el.dataset.ch));
+}
+
+function showChannel(key){
+  const m = M.channels[key];
+  if (!m) return;
+  const [lo, hi] = key.split("-").map(Number);
+  const held = DATA.chart.all_gates.includes(lo) ? lo
+             : (DATA.chart.all_gates.includes(hi) ? hi : null);
+  document.getElementById("chartinfo").innerHTML = `
+    <div class="sub">Channel ${key} &nbsp;·&nbsp; ${m.centers.join(" to ")}</div>
+    <div class="ttl">${m.name}</div>
+    <p>${m.mechanic}</p>
+    ${held != null && DATA.chart.defined_channels.includes(key)
+      ? `<p style="color:var(--text)"><b>Defined in you.</b> Both gates are
+         yours. This runs consistently and is not something you wait for.</p>`
+      : held != null
+        ? `<p style="color:var(--text)"><b>Your gate ${held}.</b>
+           ${M.gates[held].hanging}</p><p><b>When it completes.</b>
+           ${m.transit_gift}</p>`
+        : `<p>Neither gate is yours, so this only ever arrives as weather or
+           through another person who carries a half.</p>`}
+    <p style="color:var(--dim)"><b>The cost.</b> ${m.difficulty}</p>`;
+}
+
+function showGate(g){
+  const m = M.gates[g];
+  const p = P_GATES.has(g), d = D_GATES.has(g);
+  const who = p && d ? "Personality and Design" : p ? "Personality"
+            : d ? "Design" : "not in your chart";
+  document.getElementById("chartinfo").innerHTML = `
+    <div class="sub">Gate ${g} &nbsp;·&nbsp; ${m.center} &nbsp;·&nbsp; ${who}</div>
+    <div class="ttl">${m.name}</div>
+    <p>${m.theme}</p>
+    ${HANGING.has(g)
+      ? `<p style="color:var(--text)"><b>Hanging.</b> ${m.hanging}</p>`
+      : (p || d)
+        ? `<p style="color:var(--dim)">Both halves of its channel are yours,
+           so this is not waiting on anything.</p>`
+        : `<p style="color:var(--dim)">You do not carry this gate. It reaches
+           you through transits and through people who do.</p>`}
+    <p style="color:var(--dim)">Pairs with gate${m.partners.length > 1 ? "s" : ""}
+      ${m.partners.join(", ")}.</p>`;
+}
+
+document.querySelectorAll("#design-chart .gate").forEach(el =>
+  el.onclick = () => showGate(+el.id.slice(5)));
+document.querySelectorAll("#design-chart .channel").forEach(el =>
+  el.onclick = () => showChannel(el.id.slice(8)));
+
+document.getElementById("cPrev").onclick = () => {
+  const i = DATA.days.findIndex(d => d.date === chartDate);
+  if (i > 0){ chartDate = DATA.days[i-1].date; renderChart(); }
+};
+document.getElementById("cNext").onclick = () => {
+  const i = DATA.days.findIndex(d => d.date === chartDate);
+  if (i < DATA.days.length - 1){ chartDate = DATA.days[i+1].date; renderChart(); }
+};
+document.getElementById("cNatal").onclick = () => {
+  chartShowTransit = !chartShowTransit; renderChart();
+};
+
+function setView(which){
+  const cal = which === "cal";
+  document.getElementById("viewCal").classList.toggle("on", cal);
+  document.getElementById("viewChart").classList.toggle("on", !cal);
+  document.getElementById("tabCal").classList.toggle("on", cal);
+  document.getElementById("tabChart").classList.toggle("on", !cal);
+  if (!cal){ chartDate = selected || chartDate; renderChart(); }
+}
+document.getElementById("tabCal").onclick = () => setView("cal");
+document.getElementById("tabChart").onclick = () => setView("chart");
+
+/* ---------- explanation panel ---------- */
+const I = DATA.interpretation || {};
+const esc = t => String(t == null ? "" : t);
+const block = (label, text) => text
+  ? `<div class="block"><div class="bk">${label}</div><p>${esc(text)}</p></div>` : "";
+
+function openModal(html){
+  document.getElementById("mBody").innerHTML = html;
+  document.getElementById("scrim").classList.add("on");
+  document.getElementById("mClose").focus();
+}
+function closeModal(){ document.getElementById("scrim").classList.remove("on"); }
+document.getElementById("mClose").onclick = closeModal;
+document.getElementById("scrim").onclick = e => {
+  if (e.target.id === "scrim") closeModal();
+};
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeModal();
+});
+
+function explain(topic){
+  const head = (kicker, title, share) =>
+    `<div class="kicker">${kicker}</div><h3 id="mTitle">${title}</h3>` +
+    (share ? `<div class="share">${share}</div>` : `<div style="height:10px"></div>`);
+
+  if (topic === "type" && I.type){
+    const t = I.type;
+    return openModal(head("Type", t.name, t.share) +
+      `<p class="lede">${t.summary}</p><p>${t.body}</p>` +
+      block("Strategy", t.strategy) +
+      block("Not-self theme", t.not_self) +
+      block("Signature", t.signature));
+  }
+  if (topic === "profile" && I.profile){
+    const p = I.profile;
+    return openModal(head("Profile", p.profile,
+        p.lines.map(l => l.name).join(" / ")) +
+      `<p>Your profile is the two lines your conscious and unconscious Sun sit
+        in. The first is how you experience yourself. The second is how you
+        show up to other people, whether or not you intend it.</p>` +
+      p.lines.map((l, i) => block(
+        `Line ${l.line}, ${l.name}${i === 0 ? " (conscious)" : " (unconscious)"}`,
+        l.text)).join(""));
+  }
+  if (topic === "authority" && I.authority){
+    const a = I.authority;
+    return openModal(head("Authority", a.name) +
+      `<p class="lede">${a.summary}</p><p>${a.body}</p>` +
+      block("In practice", a.practice));
+  }
+  if (topic === "definition" && I.definition){
+    const d = I.definition;
+    return openModal(head("Definition", d.name, d.share) +
+      `<p class="lede">${d.summary}</p><p>${d.body}</p>` +
+      block("In practice", d.practical));
+  }
+  if (topic === "cross" && I.cross){
+    const x = I.cross;
+    const names = {personality: "Personality", design: "Design"};
+    return openModal(head("Incarnation cross", x.name, x.angle) +
+      `<p>${x.frame}</p>` +
+      (x.angle_text ? block(x.angle, x.angle_text) : "") +
+      (x.quarter ? block("Quarter of " + x.quarter, x.quarter_text) : "") +
+      (x.quarter_note ? `<p style="color:var(--dim);font-size:.84rem">
+        ${x.quarter_note}</p>` : "") +
+      `<div class="bk" style="font-family:var(--ff-display);font-size:.6rem;
+        letter-spacing:.1em;text-transform:uppercase;color:var(--gold-dim);
+        margin:16px 0 4px">The four gates</div>` +
+      x.gates.map(g => `<div class="gateline">
+        <b>${names[g.side]} ${g.body}</b>
+        <span><b style="color:var(--text);min-width:0">Gate ${g.gate}.${g.line}</b>
+          ${M.gates[g.gate].name}. ${M.gates[g.gate].theme}</span></div>`).join(""));
+  }
+  if (topic === "variable" && I.variable){
+    const v = I.variable;
+    return openModal(head("Variable", v.variable) +
+      `<p>${v.frame}</p>` + v.letters.map(t => block("", t)).join(""));
+  }
+  if (topic === "lifepath" && I.life_path){
+    const l = I.life_path;
+    return openModal(head("Life path", l.number, l.name) +
+      `<p>${l.text}</p>` +
+      block("Personal year " + DATA.days[0].personal_year,
+            DATA.days[0].personal_year_text));
+  }
+  openModal(head("", "No explanation available") +
+    `<p>Nothing is written for this property yet.</p>`);
+}
+
+/* Centres in the chart open their own explanation. */
+const CENTER_TEXT = Object.fromEntries((I.centers || []).map(c =>
+  [c.center.toLowerCase(), c]));
+document.querySelectorAll("#design-chart .center").forEach(el => {
+  el.style.cursor = "pointer";
+  el.onclick = () => {
+    const c = CENTER_TEXT[el.id.slice(7)];
+    if (!c) return;
+    openModal(`<div class="kicker">Centre</div><h3 id="mTitle">${c.label}</h3>
+      <div class="share">${c.theme} &nbsp;·&nbsp;
+        ${c.defined ? "defined in you" : "open in you"}</div>
+      <p>${c.text}</p>`);
+  };
+});
+
+/* ---------- wiring ---------- */
+document.getElementById("prev").onclick = () => { monthIdx--; renderGrid(); };
+document.getElementById("next").onclick = () => { monthIdx++; renderGrid(); };
+document.getElementById("todayBtn").onclick = () => {
+  const iso = new Date().toISOString().slice(0,10);
+  const i = months.indexOf(iso.slice(0,7));
+  if (i >= 0){ monthIdx = i; if (dayByDate[iso]) select(iso); else renderGrid(); }
+  else { monthIdx = 0; renderGrid(); }
+};
+for (const [id, key] of [["fAnswer","answers"],["fFleet","fleeting"],
+                          ["fJournal","journalled"],["fRare","rare"]]){
+  document.getElementById(id).onchange = e => {
+    F[key] = e.target.checked; renderGrid(); if (selected) renderDetail();
+  };
+}
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "TEXTAREA") return;
+  if (e.key === "ArrowLeft" && monthIdx > 0){ monthIdx--; renderGrid(); }
+  if (e.key === "ArrowRight" && monthIdx < months.length-1){ monthIdx++; renderGrid(); }
+});
+
+renderDow();
+/* Land on today when it is inside the range, otherwise on the first day, so
+   the detail panel is never empty on first open. */
+(function init(){
+  const iso = new Date().toISOString().slice(0,10);
+  if (dayByDate[iso]){ monthIdx = months.indexOf(iso.slice(0,7)); select(iso); }
+  else { monthIdx = 0; select(DATA.days[0].date); }
+})();
+</script>
+</body>
+</html>

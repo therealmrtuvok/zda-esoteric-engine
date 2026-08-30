@@ -61,7 +61,7 @@ TYPES = {
             "you respond to something you can act on it immediately. You skip steps, "
             "find shortcuts, and often have to go back for something you missed. That "
             "is not a flaw in the design; it is the design. You are also rarely doing "
-            "one thing, and being told to focus on a single path tends to make you "
+            "one thing, and being told to focus on a single path makes you "
             "smaller rather than more effective."
         ),
         "strategy": (
@@ -117,7 +117,7 @@ TYPES = {
         "signature": "Peace. The quiet that comes when nobody is pushing back.",
     },
     "Reflector": {
-        "share": "under 1% of people",
+        "share": "about 1% of people",
         "summary": "You have no defined centres. You sample everything around you.",
         "body": (
             "With all nine centres open, you take in and amplify the people and "
@@ -282,7 +282,7 @@ CENTERS = {
                     "Willpower is on tap. You can commit to a thing and deliver it, "
                     "which means the promises you make are worth something and the "
                     "ones you make lightly will still cost you.",
-                    "You may over-promise to prove your worth. There is nothing to "
+                    "You over-promise to prove your worth. There is nothing to "
                     "prove."),
     "SolarPlexus": ("Emotions",
                     "The waves are yours. They are not a reaction to the room and "
@@ -325,7 +325,7 @@ DEFINITIONS = {
         "body": (
             "One continuous circuit. Whatever is fixed in your design can reach "
             "the rest of what is fixed in your design without going through "
-            "anyone. That tends to read as self-contained, and it is the reason "
+            "anyone. That reads as self-contained, and it is the reason "
             "you can process something on your own and arrive somewhere without "
             "having talked it through."
         ),
@@ -340,10 +340,10 @@ DEFINITIONS = {
         "summary": "Your definition sits in two separate groups that do not touch.",
         "body": (
             "Two circuits, no bridge between them. The gap is not a deficiency; "
-            "it is the shape of the design. What it means in practice is that "
-            "certain things in you do not automatically talk to each other, and "
-            "another person standing nearby can connect them without either of "
-            "you doing anything deliberate."
+            "it is the shape of the design. In practice, certain things in you "
+            "do not automatically talk to each other. Another person standing "
+            "nearby connects them, without either of you doing anything "
+            "deliberate."
         ),
         "practical": (
             "You are likely to feel more like yourself around some people than "
@@ -384,7 +384,7 @@ DEFINITIONS = {
         ),
     },
     "No Definition": {
-        "share": "under 1% of people",
+        "share": "about 1% of people",
         "summary": "Nothing is fixed. You have no definition at all.",
         "body": (
             "With no defined centres there is no consistent internal circuitry to "
@@ -442,7 +442,140 @@ PERSONAL_YEARS = {
     7: "Inward. Study, rest, reassess. A poor year to force outcomes.",
     8: "Consequence and reward. Money, authority and recognition surface.",
     9: "Completion. Endings and clearing out, making room for the next cycle.",
+    # reduce() keeps master numbers, so personal_year() genuinely returns 11
+    # and 22 for some birth dates. Omitting them here produced a personal year
+    # with empty interpretation text and no error, because the lookup uses
+    # .get() with a default. Silent, plausible, wrong.
+    11: "A 2 year with the volume up. Relational and intuitive, and more "
+        "exposed than a 2. Sensitivity is the mechanic, not a side effect.",
+    22: "A 4 year at scale. Building something structural that outlasts you. "
+        "The work is unglamorous and the horizon is long.",
 }
+
+
+# ---------------------------------------------------------------------------
+# Incarnation cross and Variable.
+#
+# crosses.py names all 192 crosses but carries no descriptive text, and there
+# was none for Variable either. Rather than invent 192 write-ups, these
+# explain the mechanism and then hand back the four gates, whose themes come
+# from the gate table. Honest about what is structural and what is specific.
+# ---------------------------------------------------------------------------
+CROSS_FRAME = (
+    "Your cross is four gates. Two are where the Sun and Earth sat when you "
+    "were born. Two are where they sat about three months earlier, which is "
+    "the second half of a Human Design chart. It is the biggest and slowest "
+    "theme in the whole thing. Unlike Type or Authority, it is not something "
+    "you use day to day. You read it backwards, years later, as a description "
+    "of what you kept circling."
+)
+
+# The angle is decided entirely by the conscious Sun's line. Lines 1 to 3 are
+# the lower trigram of the hexagram, the inner half, and give a Right Angle.
+# Lines 4 to 6 are the upper trigram, the outer half, and give a Left Angle.
+# The single exception is 4/1, which is its own category.
+#
+# Proportions below are measured, not folklore: 1,200 randomly sampled charts
+# gave 50.7% Right Angle, 47.6% Left Angle, 1.8% Juxtaposition.
+ANGLES = {
+    "Right Angle": (
+        "Your conscious Sun sits in the lower trigram of its hexagram, lines "
+        "1 to 3, which is the inner half. The theme is worked out through "
+        "your own experience rather than delivered to you by other people. "
+        "About half of charts are Right Angle, so this is the ordinary case "
+        "rather than a distinction. It does not mean self-absorbed. It means "
+        "the material is yours to run rather than to receive."
+    ),
+    "Juxtaposition": (
+        "Profile 4/1, and nothing else. Under 2% of charts. Neither turned "
+        "inward like a Right Angle nor outward like a Left Angle, but fixed "
+        "on one thing, with little of the negotiability the other two have."
+    ),
+    "Left Angle": (
+        "Your conscious Sun sits in the upper trigram, lines 4 to 6, the "
+        "outer half. The theme arrives through other people and through "
+        "encounters you did not arrange. Just under half of charts."
+    ),
+}
+
+# Standard Human Design calls these personal and transpersonal karma. That is
+# a claim about destiny, which this project does not make. The mechanism is
+# trigram position, and the rest is interpretation.
+
+VARIABLE_FRAME = (
+    "Variable is the four arrows, written here as two groups: Design on the "
+    "left, Personality on the right, each as a pair of Left or Right. It "
+    "describes how you take in information and how you focus, not what you "
+    "should do. It is the least settled part of the system and the part most "
+    "often overstated. Treat it as a hint, not an instruction."
+)
+
+VARIABLE_LETTERS = {
+    "L": "Left: active, focused, strategic. Takes a specific thing and works it.",
+    "R": "Right: passive, receptive, peripheral. Takes the whole field in and "
+         "lets it sort itself.",
+}
+
+
+QUARTERS = {
+    "Initiation": "Purpose fulfilled through mind. The material is ideas and "
+                  "the awakening of them.",
+    "Civilization": "Purpose fulfilled through form. Building, structure and "
+                    "the made world.",
+    "Duality": "Purpose fulfilled through bonding. Relationship is the "
+               "vehicle, not the decoration.",
+    "Mutation": "Purpose fulfilled through transformation. Change carried in "
+                "the body rather than decided in the head.",
+}
+
+# Only the Personality Sun's quarter carries a reading. The other three cross
+# gates sit roughly 88, 180 and 268 degrees away, and the quarters are 90
+# degree blocks, so all four land in different quarters in about 97% of
+# charts. A four-quarter spread is the ordinary case, not a distinction.
+QUARTER_SPREAD_NOTE = (
+    "Your four cross gates fall in four different quarters, which is true of "
+    "roughly 97% of charts and follows from the geometry rather than meaning "
+    "anything. The quarter that carries a reading is the Personality Sun's."
+)
+
+
+def interpret_cross(hd: dict) -> dict:
+    """Cross name, angle explanation, and the four gates that compose it."""
+    name = hd.get("incarnation_cross", "")
+    angle = next((a for a in ANGLES if name.startswith(a)), None)
+    gates = []
+    for side in ("personality", "design"):
+        for body in ("sun", "earth"):
+            act = hd.get(side, {}).get(body)
+            if act:
+                gates.append({"side": side, "body": body, "gate": act["gate"],
+                              "line": act["line"]})
+    from .hd_tables import GATE_QUARTER
+    for g in gates:
+        g["quarter"] = GATE_QUARTER[g["gate"]]
+    p_sun = next((g for g in gates
+                  if g["side"] == "personality" and g["body"] == "sun"), None)
+    quarter = p_sun["quarter"] if p_sun else None
+    return {
+        "name": name,
+        "angle": angle,
+        "angle_text": ANGLES.get(angle, ""),
+        "frame": CROSS_FRAME,
+        "gates": gates,
+        "quarter": quarter,
+        "quarter_text": QUARTERS.get(quarter, ""),
+        "quarter_note": QUARTER_SPREAD_NOTE,
+    }
+
+
+def interpret_variable(hd: dict) -> dict:
+    variable = hd.get("variable", "")
+    letters = [c for c in variable if c in ("L", "R")]
+    return {
+        "variable": variable,
+        "frame": VARIABLE_FRAME,
+        "letters": [VARIABLE_LETTERS[c] for c in dict.fromkeys(letters)],
+    }
 
 
 # ---------------------------------------------------------------------------

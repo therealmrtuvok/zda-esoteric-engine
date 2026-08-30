@@ -89,6 +89,22 @@ for _center, _gates in CENTER_GATES.items():
 # 36 Channels  (gate_a, gate_b)
 # The integration-circuit gates (10, 20, 34, 57) each appear in multiple channels.
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# The four quarters. Each spans 90 degrees of the wheel, which is 16 gates,
+# starting at gates 13, 2, 7 and 1. Derived from GATE_WHEEL rather than typed
+# out, so it cannot drift from the wheel the rest of the engine uses.
+# ---------------------------------------------------------------------------
+QUARTER_STARTS = {13: "Initiation", 2: "Civilization",
+                  7: "Duality", 1: "Mutation"}
+
+GATE_QUARTER: dict[int, str] = {}
+for _start_gate, _name in QUARTER_STARTS.items():
+    _i = GATE_WHEEL.index(_start_gate)
+    for _j in range(16):
+        GATE_QUARTER[GATE_WHEEL[(_i + _j) % 64]] = _name
+
+assert len(GATE_QUARTER) == 64, "quarters must cover all 64 gates exactly once"
+
 CHANNELS: list[tuple[int, int]] = [
     # Head ↔ Ajna
     (64, 47), (61, 24), (63, 4),

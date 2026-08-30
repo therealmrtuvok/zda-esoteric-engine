@@ -35,6 +35,7 @@ RUN python tests/test_acceptance_astrology.py \
  && python tests/test_invariants.py \
  && python tests/test_fixtures.py \
  && python tests/test_interpretations.py \
+ && python tests/test_calendar.py \
  && FUZZ_N=200 python tests/test_fuzz.py
 
 # Prove the app imports and the reference chart is still correct inside the

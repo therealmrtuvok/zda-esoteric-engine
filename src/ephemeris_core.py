@@ -246,3 +246,208 @@ def binary_search_sun_longitude(target_lon: float, jd_start: float, jd_end: floa
             jd_start = mid
 
     return (jd_start + jd_end) / 2
+
+
+# ---------------------------------------------------------------------------
+# Sky events: stations, lunations, ingresses, eclipses.
+#
+# These live here because of the one architectural rule: this is the only file
+# that imports swisseph. sky_events.py turns these raw instants into labelled,
+# dated events. Nothing here knows what an event means.
+# ---------------------------------------------------------------------------
+
+ECLIPSE_KINDS = {
+    swe.ECL_TOTAL: "total",
+    swe.ECL_ANNULAR: "annular",
+    swe.ECL_PARTIAL: "partial",
+    swe.ECL_ANNULAR_TOTAL: "hybrid",
+    swe.ECL_PENUMBRAL: "penumbral",
+}
+
+
+def _body_speed(pid: int, jd: float) -> float:
+    r, _ = swe.calc_ut(jd, pid, _FLAGS)
+    return r[3]
+
+
+def _body_lon(pid: int, jd: float) -> float:
+    r, _ = swe.calc_ut(jd, pid, _FLAGS)
+    return r[0] % 360
+
+
+def find_stations(body: str, jd_from: float, jd_to: float,
+                  step_days: float = 1.0) -> list[dict]:
+    """
+    Instants in [jd_from, jd_to] where `body` changes apparent direction.
+    Returns [{"jd", "direction", "longitude"}] with direction "retrograde"
+    when the body is turning backward and "direct" when it is turning forward.
+
+    The Sun and Moon never station, so they are rejected rather than silently
+    returning an empty list, which would hide a caller's mistake.
+    """
+    if body in ("sun", "moon"):
+        raise ValueError(f"{body} never stations")
+    swe.set_ephe_path(_EPHE_PATH)
+    pid = _PLANET_IDS[body]
+
+    out = []
+    prev_jd = jd_from
+    prev_v = _body_speed(pid, prev_jd)
+    jd = jd_from + step_days
+    while jd <= jd_to:
+        v = _body_speed(pid, jd)
+        if (prev_v < 0) != (v < 0):
+            lo, hi = prev_jd, jd
+            for _ in range(60):
+                mid = (lo + hi) / 2
+                if (_body_speed(pid, mid) < 0) == (prev_v < 0):
+                    lo = mid
+                else:
+                    hi = mid
+            exact = (lo + hi) / 2
+            out.append({
+                "jd": exact,
+                "direction": "retrograde" if v < 0 else "direct",
+                "longitude": _body_lon(pid, exact),
+            })
+        prev_jd, prev_v = jd, v
+        jd += step_days
+    return out
+
+
+def find_lunations(jd_from: float, jd_to: float) -> list[dict]:
+    """
+    New and full moons in [jd_from, jd_to], found by bisecting the Moon's
+    elongation from the Sun across 0 degrees (new) and 180 degrees (full).
+    Returns [{"jd", "phase", "longitude"}] where longitude is the Moon's.
+    """
+    swe.set_ephe_path(_EPHE_PATH)
+    moon, sun = _PLANET_IDS["moon"], _PLANET_IDS["sun"]
+
+    def elong(jd):
+        return (_body_lon(moon, jd) - _body_lon(sun, jd)) % 360
+
+    def signed(jd, target):
+        d = (elong(jd) - target) % 360
+        return d - 360 if d > 180 else d
+
+    out = []
+    for target, phase in ((0.0, "new"), (180.0, "full")):
+        prev_jd = jd_from
+        prev_d = signed(prev_jd, target)
+        jd = jd_from + 0.5
+        while jd <= jd_to:
+            d = signed(jd, target)
+            if prev_d < 0 <= d and (d - prev_d) < 180:
+                lo, hi = prev_jd, jd
+                for _ in range(60):
+                    mid = (lo + hi) / 2
+                    if signed(mid, target) < 0:
+                        lo = mid
+                    else:
+                        hi = mid
+                exact = (lo + hi) / 2
+                out.append({"jd": exact, "phase": phase,
+                            "longitude": _body_lon(moon, exact)})
+            prev_jd, prev_d = jd, d
+            jd += 0.5
+    out.sort(key=lambda e: e["jd"])
+    return out
+
+
+def find_sign_ingresses(body: str, jd_from: float, jd_to: float,
+                        step_days: float = 0.5) -> list[dict]:
+    """
+    Crossings of a 30 degree sign boundary in [jd_from, jd_to], in either
+    direction. Retrograde bodies genuinely re-cross boundaries, so both
+    forward and backward crossings are reported and tagged.
+    Returns [{"jd", "sign_index", "direction"}], sign_index 0 = Aries.
+    """
+    swe.set_ephe_path(_EPHE_PATH)
+    pid = _PLANET_IDS[body]
+
+    out = []
+    prev_jd = jd_from
+    prev_lon = _body_lon(pid, prev_jd)
+    jd = jd_from + step_days
+    while jd <= jd_to:
+        lon = _body_lon(pid, jd)
+        prev_sign, sign = int(prev_lon // 30), int(lon // 30)
+        if prev_sign != sign:
+            # Wrapping 359 -> 001 is forward motion, not a 11-sign jump back.
+            forward = ((lon - prev_lon) % 360) < 180
+            boundary = (sign * 30.0) if forward else (prev_sign * 30.0)
+            lo, hi = prev_jd, jd
+            for _ in range(60):
+                mid = (lo + hi) / 2
+                if int(_body_lon(pid, mid) // 30) == prev_sign:
+                    lo = mid
+                else:
+                    hi = mid
+            out.append({
+                "jd": (lo + hi) / 2,
+                "sign_index": sign,
+                "direction": "direct" if forward else "retrograde",
+                "boundary": boundary,
+            })
+        prev_jd, prev_lon = jd, lon
+        jd += step_days
+    return out
+
+
+def find_eclipses(jd_from: float, jd_to: float) -> list[dict]:
+    """
+    Solar and lunar eclipses with maximum falling in [jd_from, jd_to].
+    Returns [{"jd", "body", "kind", "longitude"}]. `body` is "sun" or "moon",
+    naming the luminary being eclipsed, and `longitude` is that luminary's.
+    """
+    swe.set_ephe_path(_EPHE_PATH)
+    out = []
+
+    for body, finder in (("sun", swe.sol_eclipse_when_glob),
+                         ("moon", swe.lun_eclipse_when)):
+        jd = jd_from
+        # Eclipses come in seasons roughly six months apart, never more than
+        # a handful in an eight month window. The cap is a runaway guard.
+        for _ in range(40):
+            retflag, tret = finder(jd, _FLAGS, 0, False)
+            peak = tret[0]
+            if peak > jd_to:
+                break
+            kind = next((label for bit, label in ECLIPSE_KINDS.items()
+                         if retflag & bit), "unknown")
+            out.append({
+                "jd": peak,
+                "body": body,
+                "kind": kind,
+                "longitude": _body_lon(_PLANET_IDS[body], peak),
+            })
+            jd = peak + 1.0
+
+    out.sort(key=lambda e: e["jd"])
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Sunrise and sunset, for planetary hours.
+#
+# Electional work divides the day into 12 unequal hours from sunrise to sunset
+# and 12 more from sunset to sunrise, and rules each by a planet in Chaldean
+# order. That needs real rise and set times for a place, not clock noon.
+# ---------------------------------------------------------------------------
+def sun_rise_set(year: int, month: int, day: int,
+                 lat: float, lon: float) -> tuple[float, float]:
+    """
+    (sunrise_jd, sunset_jd) for the civil day at lat/lon. lon east positive.
+    Raises if the Sun neither rises nor sets, which happens above the polar
+    circles and would otherwise return a silently meaningless hour.
+    """
+    swe.set_ephe_path(_EPHE_PATH)
+    jd0 = swe.julday(year, month, day, 0.0)
+    geo = (lon, lat, 0.0)
+    ok_r, tret_r = swe.rise_trans(jd0, swe.SUN, swe.CALC_RISE, geo)
+    ok_s, tret_s = swe.rise_trans(jd0, swe.SUN, swe.CALC_SET, geo)
+    if ok_r < 0 or ok_s < 0:
+        raise ValueError(f"Sun does not rise and set on {year}-{month}-{day} "
+                         f"at {lat}, {lon}")
+    return tret_r[0], tret_s[0]

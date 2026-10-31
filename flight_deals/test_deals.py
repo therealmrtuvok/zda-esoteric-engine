@@ -77,7 +77,7 @@ class Config(unittest.TestCase):
         self.assertEqual([(o.name, o.extra_cost) for o in TRIP.origins], [("Toronto", 0), ("Buffalo", 150)])
         self.assertTrue(all(TRIP.fits(a, b) for a, b in TRIP.google_trips))
         searched = ",".join(r.airports for r in CFG.regions)
-        for airport in ("AMS", "BER", "LIS", "PDL", "AUA", "BOG", "GIG"):
+        for airport in ("AMS", "BER", "LIS", "PDL", "AUA", "BOG", "GIG", "CUZ"):
             self.assertIn(airport, searched)
 
     def test_trip_window(self):

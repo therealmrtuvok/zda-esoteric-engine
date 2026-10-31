@@ -87,12 +87,12 @@ origins = ["Toronto"]
 name = "Central & South America"
 deal_price = 850
 origins = ["Toronto"]        # Buffalo is still covered here by Travelpayouts and the deal sites
-airports = "SJO,LIR,LIM,PTY,MDE,CTG,UIO"
+airports = "SJO,CUZ,LIM,PTY,MDE,CTG,UIO"    # San José CR, Cusco, Lima, Panama City, Medellín, Cartagena, Quito
 countries = ["CR", "PA", "GT", "BZ", "HN", "NI", "SV", "CO", "PE", "EC", "BR", "AR", "CL", "UY",
              "PY", "BO", "VE", "GY", "SR"]
 keywords = ["Costa Rica", "San Jose", "Liberia", "Panama", "Guatemala", "Belize", "Roatan",
             "Honduras", "El Salvador", "Nicaragua", "Colombia", "Medellin",
-            "Medellín", "Cartagena", "Peru", "Lima", "Cusco", "Ecuador", "Quito", "Brazil",
+            "Medellín", "Cartagena", "Peru", "Lima", "Cusco", "Cuzco", "Machu Picchu", "Ecuador", "Quito", "Brazil",
             "Sao Paulo", "São Paulo", "Argentina", "Buenos Aires", "Chile",
             "Santiago", "Uruguay", "Montevideo", "South America", "Central America"]
 

@@ -1,0 +1,48 @@
+name: Flight deals
+
+on:
+  schedule:
+    - cron: "17 13 * * *"   # once a day at 13:17 UTC; add lines to run more often
+  workflow_dispatch: {}     # "Run workflow" button for a manual check
+
+concurrency:
+  group: flight-deals
+  cancel-in-progress: false
+
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Remember which deals were already alerted, so each one is pushed once.
+      - name: Restore alert history
+        uses: actions/cache/restore@v4
+        with:
+          path: flight_deals/state.json
+          key: flight-deals-state-${{ github.run_id }}
+          restore-keys: flight-deals-state-
+
+      - name: Search and notify
+        env:
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          NTFY_TOKEN: ${{ secrets.NTFY_TOKEN }}
+        run: |
+          if [ -z "$SERPAPI_KEY" ] || [ -z "$NTFY_TOPIC" ]; then
+            echo "::notice::Set the SERPAPI_KEY and NTFY_TOPIC repository secrets to enable flight deal alerts."
+            exit 0
+          fi
+          python flight_deals/deals.py
+
+      - name: Save alert history
+        if: always() && hashFiles('flight_deals/state.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: flight_deals/state.json
+          key: flight-deals-state-${{ github.run_id }}

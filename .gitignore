@@ -10,3 +10,6 @@ __pycache__/
 # Local showcase pages containing a specific individual's chart data.
 # Not part of the published engine.
 demo.html
+
+# Flight deal watcher alert history (kept in the Actions cache)
+flight_deals/state.json

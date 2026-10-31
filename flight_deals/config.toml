@@ -1,0 +1,34 @@
+# Flight deal watcher config. The routes below are PLACEHOLDERS: edit them.
+#
+# Every (departure date x trip length) pair is one SerpApi search. Check the
+# total with `python deals.py --dry-run`. The free SerpApi plan has a small
+# monthly allowance, so keep (searches per run x runs per day x 30) under it.
+
+[settings]
+currency = "USD"
+adults = 1
+max_searches_per_run = 8   # hard cap per run so a config mistake can't drain your quota
+realert_drop_pct = 10      # after alerting once, re-alert only if it gets this % cheaper
+
+[[routes]]
+name = "Boston to Lisbon"
+from = "BOS"               # IATA airport code(s); comma-separate for several: "BOS,PVD"
+to = "LIS,OPO"
+trip = "round"             # "round" or "oneway"
+nights = [7]               # trip lengths to check, e.g. [7, 10] (round trips only)
+depart_in_days = [45, 90]  # departures this many days from each run's date
+max_price = 550            # alert at or below this total price...
+alert_on_google_low = true # ...or when Google Flights says the price is "low"
+stops = "1"                # "any", "nonstop", "1" (at most 1 stop), "2"
+cabin = "economy"          # "economy", "premium", "business", "first"
+
+[[routes]]
+name = "Boston to Tokyo (holidays)"
+from = "BOS"
+to = "HND,NRT"
+trip = "round"
+nights = 12
+depart_dates = ["2026-12-19"]  # fixed dates instead of (or as well as) depart_in_days
+max_price = 900
+alert_on_google_low = false
+# enabled = false              # uncomment to pause a route without deleting it

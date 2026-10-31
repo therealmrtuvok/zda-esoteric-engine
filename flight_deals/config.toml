@@ -1,34 +1,89 @@
-# Flight deal watcher config. The routes below are PLACEHOLDERS: edit them.
-#
-# Every (departure date x trip length) pair is one SerpApi search. Check the
-# total with `python deals.py --dry-run`. The free SerpApi plan has a small
-# monthly allowance, so keep (searches per run x runs per day x 30) under it.
+# Flight deal watcher config: Toronto, New Year's 2026-27.
+
+[trip]
+origin = "YYZ,YTZ"                     # Google Flights: Pearson + Billy Bishop
+origin_city = "YTO"                    # Travelpayouts: all Toronto airports
+origin_keywords = ["Toronto", "YYZ", "YTZ", "Pearson", "Billy Bishop"]
+depart = ["2026-12-27", "2026-12-30"]  # earliest and latest day to leave
+return = ["2027-01-02", "2027-01-04"]  # earliest and latest day to come back
+max_price = 1500                       # budget: anything at or under this gets shown
+currency = "CAD"
+adults = 1
+# Exact date pairs for live Google Flights searches. Each pair costs one SerpApi
+# search per region per run: 2 pairs x 3 regions = 6 a day, about 180 a month.
+google_trips = [
+  ["2026-12-27", "2027-01-03"],
+  ["2026-12-30", "2027-01-03"],
+]
 
 [settings]
-currency = "USD"
-adults = 1
-max_searches_per_run = 8   # hard cap per run so a config mistake can't drain your quota
-realert_drop_pct = 10      # after alerting once, re-alert only if it gets this % cheaper
+max_searches_per_run = 6     # hard cap on SerpApi searches per run
+realert_drop_pct = 10        # re-push a fare only if it gets this % cheaper
+max_individual_alerts = 5    # deals and sale posts get their own push; the rest go in one digest
+feed_max_age_days = 3        # ignore deal-site posts older than this
+daily_summary = true         # quiet daily "nothing new, cheapest per region" push
 
-[[routes]]
-name = "Boston to Lisbon"
-from = "BOS"               # IATA airport code(s); comma-separate for several: "BOS,PVD"
-to = "LIS,OPO"
-trip = "round"             # "round" or "oneway"
-nights = [7]               # trip lengths to check, e.g. [7, 10] (round trips only)
-depart_in_days = [45, 90]  # departures this many days from each run's date
-max_price = 550            # alert at or below this total price...
-alert_on_google_low = true # ...or when Google Flights says the price is "low"
-stops = "1"                # "any", "nonstop", "1" (at most 1 stop), "2"
-cabin = "economy"          # "economy", "premium", "business", "first"
+# deal_price: at or under this a fare is flagged DEAL (an unusually good price for
+#   New Year's week). Between deal_price and max_price it's still shown as an option.
+# airports: up to 7 destinations Google Flights searches in one go for the region.
+# countries: ISO codes, used to sort Travelpayouts fares to anywhere into regions.
+# keywords: place names that tie a deal-site post to the region.
 
-[[routes]]
-name = "Boston to Tokyo (holidays)"
-from = "BOS"
-to = "HND,NRT"
-trip = "round"
-nights = 12
-depart_dates = ["2026-12-19"]  # fixed dates instead of (or as well as) depart_in_days
-max_price = 900
-alert_on_google_low = false
-# enabled = false              # uncomment to pause a route without deleting it
+[[regions]]
+name = "Caribbean & Mexico"
+deal_price = 700
+airports = "CUN,PUJ,MBJ,SJD,PVR,VRA,AUA"
+countries = ["MX", "DO", "JM", "CU", "BS", "BB", "AW", "CW", "BQ", "SX", "MF", "PR", "VI", "VG",
+             "TC", "KY", "LC", "AG", "KN", "DM", "GD", "VC", "TT", "HT", "BM", "GP", "MQ", "AI"]
+keywords = ["Caribbean", "Mexico", "Cancun", "Cancún", "Riviera Maya", "Puerto Vallarta", "Los Cabos",
+            "Cabo", "Cozumel", "Huatulco", "Mexico City", "Punta Cana", "Dominican", "Puerto Plata",
+            "Samana", "Jamaica", "Montego Bay", "Cuba", "Varadero", "Havana", "Cayo", "Holguin",
+            "Bahamas", "Nassau", "Aruba", "Curacao", "Curaçao", "Barbados", "Puerto Rico", "San Juan",
+            "St. Lucia", "Saint Lucia", "Antigua", "Turks", "Providenciales", "Grand Cayman", "Bermuda",
+            "St. Maarten", "Sint Maarten", "Trinidad", "Grenada", "St. Kitts"]
+
+[[regions]]
+name = "Central & South America"
+deal_price = 850
+airports = "SJO,LIR,BOG,LIM,PTY,MDE,CTG"
+countries = ["CR", "PA", "GT", "BZ", "HN", "NI", "SV", "CO", "PE", "EC", "BR", "AR", "CL", "UY",
+             "PY", "BO", "VE", "GY", "SR"]
+keywords = ["Costa Rica", "San Jose", "Liberia", "Panama", "Guatemala", "Belize", "Roatan",
+            "Honduras", "El Salvador", "Nicaragua", "Colombia", "Bogota", "Bogotá", "Medellin",
+            "Medellín", "Cartagena", "Peru", "Lima", "Cusco", "Ecuador", "Quito", "Brazil",
+            "Rio de Janeiro", "Sao Paulo", "São Paulo", "Argentina", "Buenos Aires", "Chile",
+            "Santiago", "Uruguay", "Montevideo", "South America", "Central America"]
+
+[[regions]]
+name = "Europe"
+deal_price = 950
+airports = "LIS,MAD,BCN,FCO,CDG,LHR,DUB"
+countries = ["PT", "ES", "FR", "IT", "GB", "IE", "DE", "NL", "BE", "LU", "CH", "AT", "GR", "IS",
+             "DK", "SE", "NO", "FI", "PL", "CZ", "HU", "HR", "SI", "SK", "RO", "BG", "MT", "CY",
+             "EE", "LV", "LT", "RS", "ME", "AL", "BA", "MK", "TR"]
+keywords = ["Europe", "Portugal", "Lisbon", "Porto", "Azores", "Ponta Delgada", "Spain", "Madrid",
+            "Barcelona", "France", "Paris", "Nice", "Italy", "Rome", "Milan", "Venice", "Naples",
+            "UK", "London", "Manchester", "Scotland", "Edinburgh", "Glasgow", "Ireland", "Dublin",
+            "Germany", "Frankfurt", "Munich", "Berlin", "Amsterdam", "Netherlands", "Brussels",
+            "Zurich", "Geneva", "Vienna", "Greece", "Athens", "Iceland", "Reykjavik", "Copenhagen",
+            "Stockholm", "Oslo", "Helsinki", "Prague", "Budapest", "Warsaw", "Krakow", "Croatia",
+            "Zagreb", "Split", "Dubrovnik", "Istanbul", "Turkey", "Malta"]
+
+# Deal sites with public feeds. Add more by copying a block; a broken feed is
+# reported in the run log and skipped without affecting the others.
+[[feeds]]
+name = "YYZ Deals"
+url = "https://yyzdeals.com/feed/"
+from_origin_only = true
+
+[[feeds]]
+name = "Secret Flying"
+url = "https://www.secretflying.com/feed/"
+
+[[feeds]]
+name = "Flytrippers"
+url = "https://flytrippers.com/feed/"
+
+[[feeds]]
+name = "The Flight Deal"
+url = "https://www.theflightdeal.com/feed/"

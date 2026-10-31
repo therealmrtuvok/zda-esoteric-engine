@@ -123,18 +123,24 @@ def match(item: Item, feed: Feed, trip: Trip, regions: list[Region],
     if item.published and item.published < now - timedelta(days=max_age_days):
         return None
     text = f"{item.title} {item.text}"
-    if not feed.from_origin_only and not _mentions(text, trip.origin_keywords):
-        return None
+    if feed.from_origin_only:
+        origin = trip.origins[0]
+    else:
+        origin = next((o for o in trip.origins if _mentions(text, o.keywords)), None)
+        if origin is None:
+            return None
     region = next((r for r in regions if _mentions(text, r.keywords)), None)
     if region is None or not HOLIDAY_DATES.search(text):
         return None
     m = PRICE.search(item.title) or PRICE.search(item.text)
     price = float(m.group(1).replace(",", "")) if m else None
-    if price is not None and price > trip.max_price:
+    if price is not None and price + origin.extra_cost > trip.max_price:
         return None
     return Finding(
         key=f"feed|{item.link or item.title}",
         source=feed.name,
+        origin=origin.name,
+        extra_cost=origin.extra_cost,
         kind="post",
         place=item.title[:120],
         region=region.name,

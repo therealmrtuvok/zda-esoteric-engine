@@ -15,16 +15,23 @@ USER_AGENT = "Mozilla/5.0 (compatible; flight-deals-watcher/2.0; personal use)"
 # ---------------------------------------------------------------- config
 
 @dataclass
+class Origin:
+    name: str                        # "Toronto", "Buffalo"
+    airports: str                    # Google Flights airport code(s), e.g. "YYZ,YTZ"
+    city: str                        # Travelpayouts city code, e.g. "YTO" (all Toronto airports)
+    keywords: list[str] = field(default_factory=list)  # how deal sites name it
+    extra_cost: float = 0            # cost of getting there and back (drive, parking), added to fares
+
+
+@dataclass
 class Trip:
-    origin: str                      # Google Flights airport code(s), e.g. "YYZ,YTZ"
-    origin_city: str                 # Travelpayouts city code, e.g. "YTO" (all Toronto airports)
+    origins: list[Origin]
     depart: tuple[date, date]        # earliest and latest outbound date
     ret: tuple[date, date]           # earliest and latest return date
     max_price: float                 # budget: anything at or under this is worth showing
     google_trips: list[tuple[date, date]]
     currency: str = "CAD"
     adults: int = 1
-    origin_keywords: list[str] = field(default_factory=lambda: ["Toronto", "YYZ", "YTZ", "Pearson"])
 
     def fits(self, out: date, back: date | None) -> bool:
         if not (self.depart[0] <= out <= self.depart[1]):
@@ -73,9 +80,11 @@ def load_config(path: Path) -> Config:
     with open(path, "rb") as f:
         raw = tomllib.load(f)
     t = dict(raw["trip"])
+    origins = [Origin(**o) for o in raw.get("origins", [])]
+    if not origins:
+        raise ValueError("config needs at least one [[origins]] block")
     trip = Trip(
-        origin=t.pop("origin"),
-        origin_city=t.pop("origin_city"),
+        origins=origins,
         depart=(_d(t["depart"][0]), _d(t["depart"][1])),
         ret=(_d(t["return"][0]), _d(t["return"][1])),
         max_price=float(t.pop("max_price")),
@@ -104,6 +113,7 @@ class Finding:
     """One thing worth possibly telling you about: a fare, or a deal-site post."""
     key: str                         # stable identity, for not alerting twice
     source: str                      # "Google Flights", "Travelpayouts", or the feed's name
+    origin: str                      # which origin it's from, e.g. "Buffalo"
     kind: str                        # "fare" or "post"
     place: str                       # "Lisbon (LIS)", or the post's title
     expires: date                    # forget it after this date
@@ -113,8 +123,14 @@ class Finding:
     ret: date | None = None
     details: str = ""                # airline and stops, or a post excerpt
     url: str | None = None
+    extra_cost: float = 0            # the origin's travel cost, added to compare fairly
     is_deal: bool = False
     reasons: list[str] = field(default_factory=list)
+
+    @property
+    def total(self) -> float | None:
+        """Fare plus the cost of getting to the origin airport: what budgets and deals compare."""
+        return None if self.price is None else self.price + self.extra_cost
 
 
 # ---------------------------------------------------------------- http

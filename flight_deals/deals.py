@@ -76,6 +76,16 @@ def money(cfg: Config, price: float | None) -> str:
     return f"{cfg.trip.currency} {price:,.0f}" if price is not None else ""
 
 
+def priced(f: Finding, cfg: Config) -> str:
+    """'CAD 520', or for an origin with a travel cost, 'CAD 520 (+150 to get to Buffalo)'."""
+    if f.price is None:
+        return ""
+    s = money(cfg, f.price)
+    if f.extra_cost:
+        s += f" (+{f.extra_cost:,.0f} to get to {f.origin})"
+    return s
+
+
 def dates(f: Finding) -> str:
     if not f.depart:
         return ""
@@ -88,11 +98,11 @@ def dates(f: Finding) -> str:
 def format_single(f: Finding, cfg: Config) -> dict:
     if f.kind == "post":
         title = f"Sale post: {f.place}"
-        body = (f"{f.details}\n\nFrom {f.source}. It mentions {f.region} and the holidays; "
+        body = (f"{f.details}\n\nFrom {f.source}. It mentions {f.origin}, {f.region} and the holidays; "
                 f"check that the sale covers your dates before booking.")
         return {"title": title[:250], "message": body, "click": f.url, "priority": 4, "tags": ["loudspeaker"]}
-    title = f"{'DEAL: ' if f.is_deal else ''}{f.place} {money(cfg, f.price)}"
-    lines = [f"{dates(f)} round trip", f.details]
+    title = f"{'DEAL: ' if f.is_deal else ''}{f.origin} to {f.place} {money(cfg, f.price)}"
+    lines = [f"{dates(f)} round trip, {priced(f, cfg)}", f.details]
     if f.reasons:
         lines.append("Why: " + "; ".join(f.reasons))
     lines.append(f"Source: {f.source}")
@@ -103,11 +113,11 @@ def format_single(f: Finding, cfg: Config) -> dict:
 def digest_line(f: Finding, cfg: Config) -> str:
     if f.kind == "post":
         return f"• {f.place} ({f.source})"
-    return f"• {money(cfg, f.price)}  {f.place}, {dates(f)} ({f.source})"
+    return f"• {priced(f, cfg)}  {f.origin} to {f.place}, {dates(f)} ({f.source})"
 
 
 def format_digest(items: list[Finding], cfg: Config) -> dict:
-    items = sorted(items, key=lambda f: (f.price is None, f.price or 0))
+    items = sorted(items, key=lambda f: (f.total is None, f.total or 0))
     shown = items[:12]
     body = "\n".join(digest_line(f, cfg) for f in shown)
     if len(items) > len(shown):
@@ -121,12 +131,15 @@ def format_digest(items: list[Finding], cfg: Config) -> dict:
 def format_summary(findings: list[Finding], cfg: Config, checked: list[str]) -> dict:
     lines = []
     for region in cfg.regions:
-        fares = [f for f in findings if f.kind == "fare" and f.region == region.name and f.price is not None]
-        if fares:
-            best = min(fares, key=lambda f: f.price)
-            lines.append(f"{region.name}: cheapest {money(cfg, best.price)} ({best.place}, {dates(best)})")
-        else:
-            lines.append(f"{region.name}: no fares found")
+        lines.append(f"{region.name}:")
+        for origin in cfg.trip.origins:
+            fares = [f for f in findings if f.kind == "fare" and f.region == region.name
+                     and f.origin == origin.name and f.price is not None]
+            if fares:
+                best = min(fares, key=lambda f: f.total)
+                lines.append(f"  from {origin.name}: {priced(best, cfg)}, {best.place}, {dates(best)}")
+            else:
+                lines.append(f"  from {origin.name}: no fares found")
     lines.append("Checked: " + ", ".join(checked))
     return {"title": "No new flight deals today", "message": "\n".join(lines),
             "priority": 2, "tags": ["calendar"]}
@@ -158,16 +171,16 @@ def collect(cfg: Config, now: datetime, log=print) -> tuple[list[Finding], list[
     key = os.environ.get("SERPAPI_KEY")
     if key:
         attempted += 1
-        searches = google_flights.plan(cfg.trip, cfg.regions)[: cfg.settings.max_searches_per_run]
+        searches = google_flights.plan(cfg.trip, cfg.regions, now.date())[: cfg.settings.max_searches_per_run]
         ok = 0
-        for region, out, back in searches:
+        for origin, region, out, back in searches:
             try:
-                f = google_flights.search(cfg.trip, region, out, back, key)
+                f = google_flights.search(cfg.trip, origin, region, out, back, key)
                 ok += 1
             except Exception as e:  # one bad search shouldn't sink the run
-                errors.append(f"Google Flights {region.name} {out}: {e}")
+                errors.append(f"Google Flights {origin.name} to {region.name} {out}: {e}")
                 continue
-            log(f"  Google Flights {region.name} {out}->{back}: "
+            log(f"  Google Flights {origin.name} to {region.name} {out}->{back}: "
                 + (f"{money(cfg, f.price)} {f.place}" if f else "no results"))
             if f:
                 findings.append(f)
@@ -181,11 +194,20 @@ def collect(cfg: Config, now: datetime, log=print) -> tuple[list[Finding], list[
         attempted += 1
         try:
             cities = travelpayouts.city_countries()
-            rows = travelpayouts.fetch_prices(cfg.trip, token)
-            found = travelpayouts.parse(cfg.trip, cfg.regions, rows, cities)
-            log(f"  Travelpayouts: {len(rows)} fares seen, {len(found)} destinations fit your dates and regions")
-            findings.extend(found)
-            checked.append("Travelpayouts")
+            tp_ok = 0
+            for origin in cfg.trip.origins:
+                try:
+                    rows = travelpayouts.fetch_prices(cfg.trip, origin, token)
+                except Exception as e:
+                    errors.append(f"Travelpayouts {origin.name}: {e}")
+                    continue
+                tp_ok += 1
+                found = travelpayouts.parse(cfg.trip, origin, cfg.regions, rows, cities)
+                log(f"  Travelpayouts {origin.name}: {len(rows)} fares seen, "
+                    f"{len(found)} destinations fit your dates and regions")
+                findings.extend(found)
+            if tp_ok:
+                checked.append("Travelpayouts")
         except Exception as e:
             errors.append(f"Travelpayouts: {e}")
     else:
@@ -219,9 +241,9 @@ def run(args) -> int:
         return 0
 
     if args.dry_run:
-        print("Google Flights searches" + ("" if os.environ.get("SERPAPI_KEY") else " (SERPAPI_KEY not set)") + ":")
-        for region, out, back in google_flights.plan(cfg.trip, cfg.regions)[: cfg.settings.max_searches_per_run]:
-            print(f"  {cfg.trip.origin} -> {region.airports}  {out} to {back}  ({region.name})")
+        print("Google Flights searches today" + ("" if os.environ.get("SERPAPI_KEY") else " (SERPAPI_KEY not set)") + ":")
+        for origin, region, out, back in google_flights.plan(cfg.trip, cfg.regions, today)[: cfg.settings.max_searches_per_run]:
+            print(f"  {origin.airports} -> {region.airports}  {out} to {back}  ({origin.name} to {region.name})")
         print("Travelpayouts: " + ("on" if os.environ.get("TRAVELPAYOUTS_TOKEN") else "off (TRAVELPAYOUTS_TOKEN not set)"))
         print("Feeds: " + ", ".join(f.name for f in cfg.feeds))
         return 0
@@ -238,9 +260,9 @@ def run(args) -> int:
     state = load_state(args.state, today)
     budget = cfg.trip.max_price
     new = [f for f in findings
-           if (f.price is None or f.price <= budget) and is_new(f, state, cfg.settings.realert_drop_pct)]
+           if (f.total is None or f.total <= budget) and is_new(f, state, cfg.settings.realert_drop_pct)]
     singles = [f for f in new if f.is_deal or f.kind == "post"]
-    singles.sort(key=lambda f: (not f.is_deal, f.price or 0))
+    singles.sort(key=lambda f: (not f.is_deal, f.total or 0))
     singles, overflow = singles[: cfg.settings.max_individual_alerts], singles[cfg.settings.max_individual_alerts:]
     digest = [f for f in new if not (f.is_deal or f.kind == "post")] + overflow
 

@@ -10,7 +10,7 @@ from __future__ import annotations
 import urllib.parse
 from datetime import date
 
-from common import FetchError, Finding, Region, Trip, http_json
+from common import FetchError, Finding, Origin, Region, Trip, http_json
 
 PRICES_URL = "https://api.travelpayouts.com/aviasales/v3/prices_for_dates"
 CITIES_URL = "https://api.travelpayouts.com/data/en/cities.json"
@@ -37,10 +37,10 @@ def month_pairs(trip: Trip) -> list[tuple[str, str]]:
     return [(dm, rm) for dm in months(*trip.depart) for rm in months(*trip.ret)]
 
 
-def fetch_prices(trip: Trip, token: str) -> list[dict]:
+def fetch_prices(trip: Trip, origin: Origin, token: str) -> list[dict]:
     rows = []
     for dep_month, ret_month in month_pairs(trip):
-        q = {"origin": trip.origin_city, "departure_at": dep_month, "return_at": ret_month,
+        q = {"origin": origin.city, "departure_at": dep_month, "return_at": ret_month,
              "one_way": "false", "direct": "false", "sorting": "price", "unique": "false",
              "currency": trip.currency.lower(), "limit": 1000, "page": 1}
         data = http_json(PRICES_URL + "?" + urllib.parse.urlencode(q),
@@ -51,7 +51,7 @@ def fetch_prices(trip: Trip, token: str) -> list[dict]:
     return rows
 
 
-def parse(trip: Trip, regions: list[Region], rows: list[dict],
+def parse(trip: Trip, origin: Origin, regions: list[Region], rows: list[dict],
           cities: dict[str, tuple[str, str]]) -> list[Finding]:
     """Cheapest fitting fare per destination, limited to destinations in your regions."""
     by_country = {c: r for r in regions for c in r.countries}
@@ -75,13 +75,15 @@ def parse(trip: Trip, regions: list[Region], rows: list[dict],
         city, country = cities[dest]
         region = by_country[country]
         stops = int(row.get("transfers") or 0)
-        details = (f"{row.get('airline', '?')}, {'nonstop' if stops == 0 else f'{stops} stop' + 's' * (stops > 1)}"
+        details = (f"From {row.get('origin_airport') or origin.city}. {row.get('airline', '?')}, {'nonstop' if stops == 0 else f'{stops} stop' + 's' * (stops > 1)}"
                    " outbound. Seen in recent searches, so re-check the price.")
         link = row.get("link")
-        is_deal = row["_price"] <= region.deal_price
+        is_deal = row["_price"] + origin.extra_cost <= region.deal_price
         findings.append(Finding(
-            key=f"tp|{dest}",
+            key=f"tp|{origin.name}|{dest}",
             source=SOURCE,
+            origin=origin.name,
+            extra_cost=origin.extra_cost,
             kind="fare",
             place=f"{city} ({dest})",
             region=region.name,

@@ -18,6 +18,7 @@ from common import Feed, Finding, load_config  # noqa: E402
 CFG = load_config(HERE / "config.toml")
 TRIP = CFG.trip
 CARIB, LATAM, EUROPE = CFG.regions
+TORONTO, BUFFALO = TRIP.origins
 NOW = datetime(2026, 11, 1, 12, tzinfo=timezone.utc)
 OUT, BACK = date(2026, 12, 27), date(2027, 1, 3)
 
@@ -69,6 +70,7 @@ class Config(unittest.TestCase):
         self.assertEqual([r.name for r in CFG.regions],
                          ["Caribbean & Mexico", "Central & South America", "Europe"])
         self.assertEqual(TRIP.max_price, 1500)
+        self.assertEqual([(o.name, o.extra_cost) for o in TRIP.origins], [("Toronto", 0), ("Buffalo", 150)])
         self.assertTrue(all(TRIP.fits(a, b) for a, b in TRIP.google_trips))
 
     def test_trip_window(self):
@@ -78,31 +80,48 @@ class Config(unittest.TestCase):
 
 
 class GoogleFlights(unittest.TestCase):
-    def test_plan_covers_every_region_first(self):
-        plan = google_flights.plan(TRIP, CFG.regions)
-        self.assertEqual(len(plan), 6)
-        self.assertEqual([p[0].name for p in plan[:3]], [r.name for r in CFG.regions])
+    def test_plan_one_date_pair_per_day_for_every_origin_and_region(self):
+        day1 = google_flights.plan(TRIP, CFG.regions, date(2026, 11, 1))
+        day2 = google_flights.plan(TRIP, CFG.regions, date(2026, 11, 2))
+        self.assertEqual(len(day1), 6)
+        self.assertEqual([(o.name, r.name) for o, r, _, _ in day1[:3]],
+                         [("Toronto", r.name) for r in CFG.regions])
+        self.assertEqual({(o, b) for _, _, o, b in day1} | {(o, b) for _, _, o, b in day2},
+                         set(TRIP.google_trips))
+        self.assertEqual(len({(o, b) for _, _, o, b in day1}), 1)
+
+    def test_origin_airports_sent(self):
+        p = google_flights.params(TRIP, BUFFALO, CARIB, OUT, BACK, "k")
+        self.assertEqual((p["departure_id"], p["arrival_id"]), ("BUF", "CUN,PUJ,MBJ,SJD,PVR,VRA,AUA"))
 
     def test_cheapest_option_and_destination(self):
-        f = google_flights.parse(TRIP, CARIB, OUT, BACK, gf_response([980, 640, 720]))
+        f = google_flights.parse(TRIP, TORONTO, CARIB, OUT, BACK, gf_response([980, 640, 720]))
         self.assertEqual(f.price, 640)
         self.assertEqual(f.place, "Cancún International Airport (CUN)")
         self.assertIn("WestJet, 1 stop", f.details)
         self.assertTrue(f.is_deal)
 
     def test_option_under_budget_but_not_a_deal(self):
-        f = google_flights.parse(TRIP, CARIB, OUT, BACK, gf_response([1200], level="typical"))
+        f = google_flights.parse(TRIP, TORONTO, CARIB, OUT, BACK, gf_response([1200], level="typical"))
         self.assertFalse(f.is_deal)
 
     def test_google_low_makes_it_a_deal(self):
-        f = google_flights.parse(TRIP, EUROPE, OUT, BACK, gf_response([1200], level="low"))
+        f = google_flights.parse(TRIP, TORONTO, EUROPE, OUT, BACK, gf_response([1200], level="low"))
         self.assertEqual(f.reasons, ["Google rates this price low"])
 
+    def test_buffalo_travel_cost_counts_against_deal_mark(self):
+        toronto = google_flights.parse(TRIP, TORONTO, CARIB, OUT, BACK, gf_response([640]))
+        buffalo = google_flights.parse(TRIP, BUFFALO, CARIB, OUT, BACK, gf_response([640]))
+        self.assertTrue(toronto.is_deal)
+        self.assertFalse(buffalo.is_deal)              # 640 + 150 is over the 700 mark
+        self.assertEqual((buffalo.origin, buffalo.total), ("Buffalo", 790))
+        self.assertNotEqual(toronto.key, buffalo.key)
+
     def test_no_results(self):
-        self.assertIsNone(google_flights.parse(TRIP, CARIB, OUT, BACK, {"best_flights": []}))
+        self.assertIsNone(google_flights.parse(TRIP, TORONTO, CARIB, OUT, BACK, {"best_flights": []}))
         with mock.patch.object(google_flights, "http_json",
                                return_value={"error": "Google Flights hasn't returned any results for this query."}):
-            self.assertIsNone(google_flights.search(TRIP, CARIB, OUT, BACK, "k"))
+            self.assertIsNone(google_flights.search(TRIP, TORONTO, CARIB, OUT, BACK, "k"))
 
 
 class Travelpayouts(unittest.TestCase):
@@ -119,10 +138,15 @@ class Travelpayouts(unittest.TestCase):
                 self.row("LIS", 400, out="2026-12-20"),       # leaves too early
                 self.row("YVR", 300),                         # Canada: not a region
                 self.row("LIM", 1100, back="2027-01-04")]
-        found = travelpayouts.parse(TRIP, CFG.regions, rows, self.CITIES)
+        found = travelpayouts.parse(TRIP, TORONTO, CFG.regions, rows, self.CITIES)
         self.assertEqual([(f.place, f.price, f.is_deal) for f in found],
                          [("Cancun (CUN)", 650, True), ("Lima (LIM)", 1100, False)])
         self.assertEqual(found[0].url, "https://www.aviasales.com/search/YTOCUN")
+
+    def test_buffalo(self):
+        found = travelpayouts.parse(TRIP, BUFFALO, CFG.regions, [self.row("CUN", 600)], self.CITIES)
+        self.assertEqual([(f.key, f.origin, f.total, f.is_deal) for f in found],
+                         [("tp|Buffalo|CUN", "Buffalo", 750, False)])
 
     def test_month_pairs(self):
         self.assertEqual(travelpayouts.month_pairs(TRIP), [("2026-12", "2027-01")])
@@ -164,6 +188,15 @@ class Feeds(unittest.TestCase):
         self.assertIn("Christmas", found[0].details)
         self.assertNotIn("<p>", found[0].details)
 
+    def test_buffalo_posts_match_and_pay_the_travel_cost(self):
+        xml = (b'<rss><channel><item><title>Buffalo to Punta Cana $380 roundtrip over New Year</title>'
+               b'<link>https://deals.example/buf</link><pubDate>Sun, 01 Nov 2026 09:00:00 +0000</pubDate>'
+               b'</item><item><title>Buffalo to Paris $1,400 in December</title>'
+               b'<link>https://deals.example/buf2</link><pubDate>Sun, 01 Nov 2026 09:00:00 +0000</pubDate>'
+               b'</item></channel></rss>')
+        found = self.scan(xml)                            # Paris: 1,400 + 150 is over budget
+        self.assertEqual([(f.origin, f.price, f.total) for f in found], [("Buffalo", 380, 530)])
+
     def test_atom(self):
         found = self.scan(ATOM)
         self.assertEqual([(f.price, f.region, f.url) for f in found],
@@ -177,7 +210,8 @@ class Feeds(unittest.TestCase):
 
 class State(unittest.TestCase):
     def finding(self, price, key="gf|x"):
-        return Finding(key=key, source="s", kind="fare", place="p", expires=date(2026, 12, 27), price=price)
+        return Finding(key=key, source="s", origin="Toronto", kind="fare", place="p",
+                       expires=date(2026, 12, 27), price=price)
 
     def test_realert_only_on_meaningful_drop(self):
         state = {"gf|x": {"price": 1000, "expires": "2026-12-27"}}
@@ -201,7 +235,8 @@ class EndToEnd(unittest.TestCase):
              mock.patch.object(deals, "datetime", wraps=datetime) as dt, \
              mock.patch.object(google_flights, "http_json", side_effect=gf or (lambda *a, **k: gf_response([1250]))), \
              mock.patch.object(travelpayouts, "city_countries", return_value=cities), \
-             mock.patch.object(travelpayouts, "fetch_prices", return_value=tp_rows or [], side_effect=tp_error), \
+             mock.patch.object(travelpayouts, "fetch_prices",
+                               side_effect=tp_error or (lambda trip, origin, token: (tp_rows or {}).get(origin.name, []))), \
              mock.patch.object(feeds, "http_get", return_value=rss), \
              mock.patch.object(deals, "ntfy_send") as send:
             dt.now.return_value = NOW
@@ -211,22 +246,28 @@ class EndToEnd(unittest.TestCase):
     ENV = {"SERPAPI_KEY": "k", "TRAVELPAYOUTS_TOKEN": "t", "NTFY_TOPIC": "topic"}
 
     def test_deals_singly_options_in_digest_then_quiet(self):
-        tp = [Travelpayouts().row("CUN", 610), Travelpayouts().row("LIS", 1300)]
+        row = Travelpayouts().row
+        tp = {"Toronto": [row("CUN", 610), row("LIS", 1300)],
+              "Buffalo": [row("CUN", 520), row("LIS", 1400)]}
         with tempfile.TemporaryDirectory() as d:
             code, sent = self.run_main(d, self.ENV, tp_rows=tp)
             self.assertEqual(code, 0)
             titles = [m["title"] for m in sent]
-            # Cancun fare deal and the Cancun sale post get their own pushes...
-            self.assertEqual(titles[0], "DEAL: Cancun (CUN) CAD 610")
-            self.assertTrue(titles[1].startswith("Sale post: Toronto to Cancun $489"))
-            # ...and the six Google Flights options at 1,250 plus Lisbon at 1,300 go in one digest.
-            self.assertEqual(titles[2], "7 new options under CAD 1,500")
-            self.assertEqual(len(sent), 3)
-            self.assertEqual(len(sent[2]["actions"]), 3)
+            # Cancun from Toronto (610) and from Buffalo (520 + 150 = 670) are deals; then the sale post.
+            self.assertEqual(titles[:2], ["DEAL: Toronto to Cancun (CUN) CAD 610",
+                                          "DEAL: Buffalo to Cancun (CUN) CAD 520"])
+            self.assertIn("CAD 520 (+150 to get to Buffalo)", sent[1]["message"])
+            self.assertTrue(titles[2].startswith("Sale post: Toronto to Cancun $489"))
+            # Google Flights: 3 from Toronto at 1,250, 3 from Buffalo at 1,250 + 150 = 1,400,
+            # plus Lisbon from Toronto at 1,300. Lisbon from Buffalo (1,550) is over budget.
+            self.assertEqual(titles[3], "7 new options under CAD 1,500")
+            self.assertEqual(len(sent), 4)
+            self.assertNotIn("1,400 (+150", sent[3]["message"])
 
             code, sent = self.run_main(d, self.ENV, tp_rows=tp)
             self.assertEqual([m["title"] for m in sent], ["No new flight deals today"])
-            self.assertIn("Caribbean & Mexico: cheapest CAD 610", sent[0]["message"])
+            self.assertIn("from Toronto: CAD 610, Cancun (CUN)", sent[0]["message"])
+            self.assertIn("from Buffalo: CAD 520 (+150 to get to Buffalo), Cancun (CUN)", sent[0]["message"])
 
     def test_feeds_only_without_any_keys(self):
         with tempfile.TemporaryDirectory() as d:

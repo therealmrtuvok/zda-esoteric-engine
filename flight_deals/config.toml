@@ -1,20 +1,37 @@
 # Flight deal watcher config: Toronto, New Year's 2026-27.
 
 [trip]
-origin = "YYZ,YTZ"                     # Google Flights: Pearson + Billy Bishop
-origin_city = "YTO"                    # Travelpayouts: all Toronto airports
-origin_keywords = ["Toronto", "YYZ", "YTZ", "Pearson", "Billy Bishop"]
 depart = ["2026-12-27", "2026-12-30"]  # earliest and latest day to leave
 return = ["2027-01-02", "2027-01-04"]  # earliest and latest day to come back
 max_price = 1500                       # budget: anything at or under this gets shown
 currency = "CAD"
 adults = 1
-# Exact date pairs for live Google Flights searches. Each pair costs one SerpApi
-# search per region per run: 2 pairs x 3 regions = 6 a day, about 180 a month.
+# Exact date pairs for live Google Flights searches. Each run uses ONE pair,
+# rotating daily, for every origin and region: 2 origins x 3 regions = 6
+# searches a day (about 180 a month), and each pair is covered every 2 days.
 google_trips = [
   ["2026-12-27", "2027-01-03"],
   ["2026-12-30", "2027-01-03"],
 ]
+
+# Where you can fly from. The first one is home: deal sites that only post
+# fares from your city (from_origin_only feeds) are attributed to it.
+[[origins]]
+name = "Toronto"
+airports = "YYZ,YTZ"              # Google Flights: Pearson + Billy Bishop
+city = "YTO"                      # Travelpayouts: all Toronto airports
+keywords = ["Toronto", "YYZ", "YTZ", "Pearson", "Billy Bishop"]
+
+[[origins]]
+name = "Buffalo"
+airports = "BUF"
+city = "BUF"
+keywords = ["Buffalo", "BUF"]
+# Added to every Buffalo fare before comparing it with the budget, deal marks
+# and Toronto fares: about CA$40 gas there and back plus a week of airport
+# parking. Raise it if the border wait or a hotel night matters to you.
+# You'll need a passport, and US fares are converted to CAD.
+extra_cost = 150
 
 [settings]
 max_searches_per_run = 6     # hard cap on SerpApi searches per run

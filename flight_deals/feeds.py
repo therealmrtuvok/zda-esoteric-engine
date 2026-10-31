@@ -7,12 +7,13 @@ from __future__ import annotations
 
 import html
 import re
+import urllib.parse
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 
-from common import Feed, Finding, Region, Trip, http_get
+from common import Feed, FetchError, Finding, Region, Trip, http_get
 
 ATOM = "{http://www.w3.org/2005/Atom}"
 HOLIDAY_DATES = re.compile(r"\b(dec(ember)?|jan(uary)?|christmas|new\s+year'?s?|holidays?)\b", re.I)
@@ -45,8 +46,52 @@ def _when(s: str | None) -> datetime | None:
     return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
 
 
+XML_ENTITIES = {"amp", "lt", "gt", "quot", "apos"}
+FEED_LINK = re.compile(
+    rb"<link[^>]+type=[\"']application/(?:rss|atom)\+xml[\"'][^>]*>", re.I)
+
+
+def _looks_like_html(raw: bytes) -> bool:
+    head = raw[:1000].lstrip().lower()
+    return head.startswith(b"<!doctype html") or head.startswith(b"<html") or b"<html" in head[:300]
+
+
+def discover(page: bytes, base: str) -> str | None:
+    """The feed URL a web page advertises in its <link rel="alternate"> tag."""
+    for tag in FEED_LINK.findall(page):
+        m = re.search(rb"href=[\"']([^\"']+)[\"']", tag)
+        if m:
+            return urllib.parse.urljoin(base, html.unescape(m.group(1).decode(errors="replace")))
+    return None
+
+
+def _root(xml: bytes) -> ET.Element:
+    """Parse a feed, forgiving the two most common mistakes: bare '&' and HTML entities."""
+    try:
+        return ET.fromstring(xml)
+    except ET.ParseError:
+        fixed = re.sub(rb"&(?!#\d+;|#x[0-9a-fA-F]+;|\w+;)", b"&amp;", xml)
+        fixed = re.sub(rb"&(\w+);", lambda m: m.group(0) if m.group(1).decode() in XML_ENTITIES
+                       else html.unescape(m.group(0).decode()).encode("ascii", "xmlcharrefreplace"), fixed)
+        return ET.fromstring(fixed)
+
+
+def fetch(url: str) -> bytes:
+    """Fetch a feed; given a web page instead, follow the feed link it advertises."""
+    raw = http_get(url, timeout=45)
+    if not _looks_like_html(raw):
+        return raw
+    feed_url = discover(raw, url)
+    if not feed_url:
+        raise FetchError("got a web page with no feed link (the site may be blocking automated requests)")
+    raw = http_get(feed_url, timeout=45)
+    if _looks_like_html(raw):
+        raise FetchError(f"{feed_url} returned a web page, not a feed (likely bot protection)")
+    return raw
+
+
 def parse(xml: bytes) -> list[Item]:
-    root = ET.fromstring(xml)
+    root = _root(xml)
     items = []
     for it in root.iter("item"):                       # RSS 2.0
         items.append(Item(
@@ -102,6 +147,6 @@ def match(item: Item, feed: Feed, trip: Trip, regions: list[Region],
 
 def scan(feed: Feed, trip: Trip, regions: list[Region], now: datetime,
          max_age_days: int) -> list[Finding]:
-    items = parse(http_get(feed.url, timeout=45))
+    items = parse(fetch(feed.url))
     found = [match(i, feed, trip, regions, now, max_age_days) for i in items]
     return [f for f in found if f]

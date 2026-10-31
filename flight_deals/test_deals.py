@@ -137,6 +137,25 @@ class Feeds(unittest.TestCase):
         self.assertEqual(feeds.PRICE.search("from $2,100 return").group(1), "2,100")
         self.assertEqual(feeds.PRICE.search("CA$489 roundtrip").group(1), "489")
 
+    def test_malformed_feed_is_forgiven(self):
+        xml = RSS.replace(b"Toronto to Cancun $489", b"Toronto to Cancun &nbsp;$489 Sun & Sand")
+        found = self.scan(xml)
+        self.assertEqual(found[0].price, 489)
+        self.assertIn("Sun & Sand", found[0].place)
+
+    def test_home_page_feed_discovery(self):
+        page = (b'<!DOCTYPE html><html><head><link rel="alternate" type="application/rss+xml" '
+                b'href="/deals/feed.xml"></head><body>hi</body></html>')
+        with mock.patch.object(feeds, "http_get", side_effect=[page, RSS]) as get:
+            self.assertEqual(feeds.fetch("https://deals.example/"), RSS)
+        self.assertEqual(get.call_args.args[0], "https://deals.example/deals/feed.xml")
+
+    def test_bot_wall_reported_clearly(self):
+        wall = b"<!DOCTYPE html><html><head><title>Just a moment...</title></head></html>"
+        with mock.patch.object(feeds, "http_get", return_value=wall):
+            with self.assertRaisesRegex(Exception, "no feed link"):
+                feeds.fetch("https://deals.example/feed/")
+
     def test_rss_filtering(self):
         found = self.scan(RSS)
         # Vancouver: no region. Lisbon: March. Montreal: not Toronto. Rome: over budget. Bogota: too old.

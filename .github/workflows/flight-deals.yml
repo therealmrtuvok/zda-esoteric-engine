@@ -25,7 +25,7 @@ jobs:
           python-version: "3.12"
 
       - name: Unit tests
-        run: python -m unittest flight_deals/test_deals.py
+        run: python -m unittest -b flight_deals/test_deals.py
 
       # Remember what was already pushed, so each find is sent once.
       - name: Restore alert history

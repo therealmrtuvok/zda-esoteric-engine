@@ -69,11 +69,12 @@ keywords = ["Europe", "Portugal", "Lisbon", "Porto", "Azores", "Ponta Delgada", 
             "Stockholm", "Oslo", "Helsinki", "Prague", "Budapest", "Warsaw", "Krakow", "Croatia",
             "Zagreb", "Split", "Dubrovnik", "Istanbul", "Turkey", "Malta"]
 
-# Deal sites with public feeds. Add more by copying a block; a broken feed is
-# reported in the run log and skipped without affecting the others.
+# Deal sites with public feeds. `url` can be the feed itself or the site's home
+# page (the feed link is found automatically). Add more by copying a block; a
+# broken feed is reported in the run log and skipped without affecting the others.
 [[feeds]]
 name = "YYZ Deals"
-url = "https://yyzdeals.com/feed/"
+url = "https://yyzdeals.com/"
 from_origin_only = true
 
 [[feeds]]
@@ -87,3 +88,11 @@ url = "https://flytrippers.com/feed/"
 [[feeds]]
 name = "The Flight Deal"
 url = "https://www.theflightdeal.com/feed/"
+
+[[feeds]]
+name = "Fly4free"
+url = "https://www.fly4free.com/feed/"
+
+[[feeds]]
+name = "Reddit r/flightdeals"
+url = "https://www.reddit.com/r/flightdeals/.rss"

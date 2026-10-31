@@ -7,8 +7,9 @@ max_price = 1500                       # budget: anything at or under this gets 
 currency = "CAD"
 adults = 1
 # Exact date pairs for live Google Flights searches. Each run uses ONE pair,
-# rotating daily, for every origin and region: 2 origins x 3 regions = 6
-# searches a day (about 180 a month), and each pair is covered every 2 days.
+# rotating daily, for every origin and region: 2 origins x 3 regions, plus
+# Bogota and Rio from Toronto = 8 searches a day (about 240 a month). Each pair
+# is covered every 2 days.
 google_trips = [
   ["2026-12-27", "2027-01-03"],
   ["2026-12-30", "2027-01-03"],
@@ -34,7 +35,7 @@ keywords = ["Buffalo", "BUF"]
 extra_cost = 150
 
 [settings]
-max_searches_per_run = 6     # hard cap on SerpApi searches per run
+max_searches_per_run = 8     # hard cap on SerpApi searches per run
 realert_drop_pct = 10        # re-push a fare only if it gets this % cheaper
 max_individual_alerts = 5    # deals and sale posts get their own push; the rest go in one digest
 feed_max_age_days = 3        # ignore deal-site posts older than this
@@ -44,7 +45,9 @@ daily_summary = true         # quiet daily "nothing new, cheapest per region" pu
 #   New Year's week). Between deal_price and max_price it's still shown as an option.
 # airports: up to 7 destinations Google Flights searches in one go for the region.
 # countries: ISO codes, used to sort Travelpayouts fares to anywhere into regions.
-# keywords: place names that tie a deal-site post to the region.
+# cities: Travelpayouts city codes that belong here even if their country is elsewhere.
+# keywords: place names that tie a deal-site post to the region (first match wins).
+# origins: limit this region's Google Flights searches to these origins (saves quota).
 
 [[regions]]
 name = "Caribbean & Mexico"
@@ -59,16 +62,36 @@ keywords = ["Caribbean", "Mexico", "Cancun", "Cancún", "Riviera Maya", "Puerto 
             "St. Lucia", "Saint Lucia", "Antigua", "Turks", "Providenciales", "Grand Cayman", "Bermuda",
             "St. Maarten", "Sint Maarten", "Trinidad", "Grenada", "St. Kitts"]
 
+# Bogota and Rio get their own searches: in a shared region, the cheaper city
+# would hide the other's price. Google Flights checks them from Toronto only
+# (Toronto has nonstops to Bogota; Buffalo rarely wins after its CA$150), while
+# Travelpayouts and the deal sites still cover both from Buffalo too.
+[[regions]]
+name = "Bogota"
+deal_price = 700             # connecting holiday fares were ~CA$640-670 in Oct 2026
+airports = "BOG"
+cities = ["BOG"]
+keywords = ["Bogota", "Bogotá"]
+origins = ["Toronto"]
+
+[[regions]]
+name = "Rio"
+deal_price = 1100            # Rio's New Year's Eve (Reveillon) is peak season; most fares will be higher
+airports = "GIG,SDU"
+cities = ["RIO"]
+keywords = ["Rio de Janeiro", "Rio", "Copacabana"]
+origins = ["Toronto"]
+
 [[regions]]
 name = "Central & South America"
 deal_price = 850
-airports = "SJO,LIR,BOG,LIM,PTY,MDE,CTG"
+airports = "SJO,LIR,LIM,PTY,MDE,CTG,UIO"
 countries = ["CR", "PA", "GT", "BZ", "HN", "NI", "SV", "CO", "PE", "EC", "BR", "AR", "CL", "UY",
              "PY", "BO", "VE", "GY", "SR"]
 keywords = ["Costa Rica", "San Jose", "Liberia", "Panama", "Guatemala", "Belize", "Roatan",
-            "Honduras", "El Salvador", "Nicaragua", "Colombia", "Bogota", "Bogotá", "Medellin",
+            "Honduras", "El Salvador", "Nicaragua", "Colombia", "Medellin",
             "Medellín", "Cartagena", "Peru", "Lima", "Cusco", "Ecuador", "Quito", "Brazil",
-            "Rio de Janeiro", "Sao Paulo", "São Paulo", "Argentina", "Buenos Aires", "Chile",
+            "Sao Paulo", "São Paulo", "Argentina", "Buenos Aires", "Chile",
             "Santiago", "Uruguay", "Montevideo", "South America", "Central America"]
 
 [[regions]]

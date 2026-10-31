@@ -55,6 +55,7 @@ def parse(trip: Trip, origin: Origin, regions: list[Region], rows: list[dict],
           cities: dict[str, tuple[str, str]]) -> list[Finding]:
     """Cheapest fitting fare per destination, limited to destinations in your regions."""
     by_country = {c: r for r in regions for c in r.countries}
+    by_city = {c: r for r in regions for c in r.cities}
     cheapest: dict[str, dict] = {}
     for row in rows:
         try:
@@ -65,15 +66,16 @@ def parse(trip: Trip, origin: Origin, regions: list[Region], rows: list[dict],
             continue
         dest = row.get("destination", "")
         _, country = cities.get(dest, ("", ""))
-        if country not in by_country or not trip.fits(out, back):
+        region = by_city.get(dest) or by_country.get(country)
+        if region is None or not trip.fits(out, back):
             continue
         if dest not in cheapest or price < cheapest[dest]["_price"]:
-            cheapest[dest] = {**row, "_price": price, "_out": out, "_back": back}
+            cheapest[dest] = {**row, "_price": price, "_out": out, "_back": back, "_region": region}
 
     findings = []
     for dest, row in cheapest.items():
-        city, country = cities[dest]
-        region = by_country[country]
+        city, _ = cities.get(dest, (dest, ""))
+        region = row["_region"]
         stops = int(row.get("transfers") or 0)
         details = (f"From {row.get('origin_airport') or origin.city}. {row.get('airline', '?')}, {'nonstop' if stops == 0 else f'{stops} stop' + 's' * (stops > 1)}"
                    " outbound. Seen in recent searches, so re-check the price.")

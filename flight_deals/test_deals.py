@@ -17,7 +17,9 @@ from common import Feed, Finding, load_config  # noqa: E402
 
 CFG = load_config(HERE / "config.toml")
 TRIP = CFG.trip
-CARIB, LATAM, EUROPE = CFG.regions
+REGIONS = {r.name: r for r in CFG.regions}
+CARIB, LATAM, EUROPE = REGIONS["Caribbean & Mexico"], REGIONS["Central & South America"], REGIONS["Europe"]
+BOGOTA, RIO = REGIONS["Bogota"], REGIONS["Rio"]
 TORONTO, BUFFALO = TRIP.origins
 NOW = datetime(2026, 11, 1, 12, tzinfo=timezone.utc)
 OUT, BACK = date(2026, 12, 27), date(2027, 1, 3)
@@ -68,7 +70,7 @@ ATOM = b"""<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom">
 class Config(unittest.TestCase):
     def test_shipped_config(self):
         self.assertEqual([r.name for r in CFG.regions],
-                         ["Caribbean & Mexico", "Central & South America", "Europe"])
+                         ["Caribbean & Mexico", "Bogota", "Rio", "Central & South America", "Europe"])
         self.assertEqual(TRIP.max_price, 1500)
         self.assertEqual([(o.name, o.extra_cost) for o in TRIP.origins], [("Toronto", 0), ("Buffalo", 150)])
         self.assertTrue(all(TRIP.fits(a, b) for a, b in TRIP.google_trips))
@@ -83,9 +85,11 @@ class GoogleFlights(unittest.TestCase):
     def test_plan_one_date_pair_per_day_for_every_origin_and_region(self):
         day1 = google_flights.plan(TRIP, CFG.regions, date(2026, 11, 1))
         day2 = google_flights.plan(TRIP, CFG.regions, date(2026, 11, 2))
-        self.assertEqual(len(day1), 6)
-        self.assertEqual([(o.name, r.name) for o, r, _, _ in day1[:3]],
-                         [("Toronto", r.name) for r in CFG.regions])
+        self.assertEqual(len(day1), 8)
+        self.assertEqual(len(day1), CFG.settings.max_searches_per_run)
+        self.assertEqual([(o.name, r.name) for o, r, _, _ in day1],
+                         [("Toronto", r.name) for r in CFG.regions]
+                         + [("Buffalo", n) for n in ("Caribbean & Mexico", "Central & South America", "Europe")])
         self.assertEqual({(o, b) for _, _, o, b in day1} | {(o, b) for _, _, o, b in day2},
                          set(TRIP.google_trips))
         self.assertEqual(len({(o, b) for _, _, o, b in day1}), 1)
@@ -126,7 +130,8 @@ class GoogleFlights(unittest.TestCase):
 
 class Travelpayouts(unittest.TestCase):
     CITIES = {"CUN": ("Cancun", "MX"), "LIS": ("Lisbon", "PT"), "YVR": ("Vancouver", "CA"),
-              "LIM": ("Lima", "PE")}
+              "LIM": ("Lima", "PE"), "BOG": ("Bogota", "CO"), "RIO": ("Rio de Janeiro", "BR"),
+              "SAO": ("Sao Paulo", "BR")}
 
     def row(self, dest, price, out="2026-12-28", back="2027-01-03"):
         return {"destination": dest, "price": price, "airline": "WS", "transfers": 0,
@@ -142,6 +147,14 @@ class Travelpayouts(unittest.TestCase):
         self.assertEqual([(f.place, f.price, f.is_deal) for f in found],
                          [("Cancun (CUN)", 650, True), ("Lima (LIM)", 1100, False)])
         self.assertEqual(found[0].url, "https://www.aviasales.com/search/YTOCUN")
+
+    def test_city_regions_beat_country_regions(self):
+        rows = [self.row("BOG", 690), self.row("RIO", 1050), self.row("SAO", 900)]
+        found = travelpayouts.parse(TRIP, TORONTO, CFG.regions, rows, self.CITIES)
+        self.assertEqual([(f.place, f.region, f.is_deal) for f in found],
+                         [("Bogota (BOG)", "Bogota", True),
+                          ("Sao Paulo (SAO)", "Central & South America", False),
+                          ("Rio de Janeiro (RIO)", "Rio", True)])
 
     def test_buffalo(self):
         found = travelpayouts.parse(TRIP, BUFFALO, CFG.regions, [self.row("CUN", 600)], self.CITIES)
@@ -196,6 +209,16 @@ class Feeds(unittest.TestCase):
                b'</item></channel></rss>')
         found = self.scan(xml)                            # Paris: 1,400 + 150 is over budget
         self.assertEqual([(f.origin, f.price, f.total) for f in found], [("Buffalo", 380, 530)])
+
+    def test_rio_and_bogota_posts(self):
+        xml = (b'<rss><channel><item><title>Toronto to Rio de Janeiro $980 over New Year</title>'
+               b'<link>https://deals.example/rio</link><pubDate>Sun, 01 Nov 2026 09:00:00 +0000</pubDate>'
+               b'</item><item><title>Toronto to Bogota, Colombia $640 December</title>'
+               b'<link>https://deals.example/bog</link><pubDate>Sun, 01 Nov 2026 09:00:00 +0000</pubDate>'
+               b'</item><item><title>Toronto to Puerto Rico $600 December</title>'
+               b'<link>https://deals.example/sju</link><pubDate>Sun, 01 Nov 2026 09:00:00 +0000</pubDate>'
+               b'</item></channel></rss>')
+        self.assertEqual([f.region for f in self.scan(xml)], ["Rio", "Bogota", "Caribbean & Mexico"])
 
     def test_atom(self):
         found = self.scan(ATOM)
@@ -258,9 +281,9 @@ class EndToEnd(unittest.TestCase):
                                           "DEAL: Buffalo to Cancun (CUN) CAD 520"])
             self.assertIn("CAD 520 (+150 to get to Buffalo)", sent[1]["message"])
             self.assertTrue(titles[2].startswith("Sale post: Toronto to Cancun $489"))
-            # Google Flights: 3 from Toronto at 1,250, 3 from Buffalo at 1,250 + 150 = 1,400,
+            # Google Flights: 5 from Toronto at 1,250, 3 from Buffalo at 1,250 + 150 = 1,400,
             # plus Lisbon from Toronto at 1,300. Lisbon from Buffalo (1,550) is over budget.
-            self.assertEqual(titles[3], "7 new options under CAD 1,500")
+            self.assertEqual(titles[3], "9 new options under CAD 1,500")
             self.assertEqual(len(sent), 4)
             self.assertNotIn("1,400 (+150", sent[3]["message"])
 

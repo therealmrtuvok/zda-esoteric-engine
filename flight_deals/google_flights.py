@@ -26,7 +26,8 @@ def plan(trip: Trip, regions: list[Region], today: date) -> list[Search]:
     if not trip.google_trips:
         return []
     out, back = trip.google_trips[today.toordinal() % len(trip.google_trips)]
-    return [(o, r, out, back) for o in trip.origins for r in regions if r.airports]
+    return [(o, r, out, back) for o in trip.origins for r in regions
+            if r.airports and (not r.origins or o.name in r.origins)]
 
 
 def params(trip: Trip, origin: Origin, region: Region, out: date, back: date, api_key: str) -> dict:

@@ -45,7 +45,9 @@ class Region:
     deal_price: float                # at or under this, it's a DEAL, not just an option
     airports: str = ""               # Google Flights destinations, comma-separated (7 max)
     countries: set[str] = field(default_factory=set)   # ISO codes, for Travelpayouts
+    cities: set[str] = field(default_factory=set)      # city codes, for Travelpayouts; beat countries
     keywords: list[str] = field(default_factory=list)  # place names, for deal-site posts
+    origins: list[str] = field(default_factory=list)   # Google Flights searches only from these (default: all)
 
 
 @dataclass
@@ -98,6 +100,7 @@ def load_config(path: Path) -> Config:
     for r in raw.get("regions", []):
         r = dict(r)
         r["countries"] = set(r.get("countries", []))
+        r["cities"] = set(r.get("cities", []))
         region = Region(**r)
         if len([a for a in region.airports.split(",") if a.strip()]) > 7:
             raise ValueError(f"{region.name}: Google Flights takes at most 7 destination airports")

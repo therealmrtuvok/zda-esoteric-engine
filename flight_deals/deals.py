@@ -175,15 +175,15 @@ def collect(cfg: Config, now: datetime, log=print) -> tuple[list[Finding], list[
         ok = 0
         for origin, region, out, back in searches:
             try:
-                f = google_flights.search(cfg.trip, origin, region, out, back, key)
+                found = google_flights.search(cfg.trip, origin, region, out, back, key)
                 ok += 1
             except Exception as e:  # one bad search shouldn't sink the run
                 errors.append(f"Google Flights {origin.name} to {region.name} {out}: {e}")
                 continue
             log(f"  Google Flights {origin.name} to {region.name} {out}->{back}: "
-                + (f"{money(cfg, f.price)} {f.place}" if f else "no results"))
-            if f:
-                findings.append(f)
+                + (", ".join(f"{f.place.rsplit('(', 1)[-1].rstrip(')')} {f.price:,.0f}" for f in found)
+                   or "no results"))
+            findings.extend(found)
         if ok:
             checked.append(f"Google Flights ({ok} searches)")
     else:

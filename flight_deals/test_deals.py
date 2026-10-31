@@ -3,6 +3,7 @@ import json
 import sys
 import tempfile
 import unittest
+import urllib.parse
 from datetime import date, datetime, timezone
 from pathlib import Path
 from unittest import mock
@@ -74,6 +75,9 @@ class Config(unittest.TestCase):
         self.assertEqual(TRIP.max_price, 1500)
         self.assertEqual([(o.name, o.extra_cost) for o in TRIP.origins], [("Toronto", 0), ("Buffalo", 150)])
         self.assertTrue(all(TRIP.fits(a, b) for a, b in TRIP.google_trips))
+        searched = ",".join(r.airports for r in CFG.regions)
+        for airport in ("AMS", "BER", "LIS", "PDL", "AUA", "BOG", "GIG"):
+            self.assertIn(airport, searched)
 
     def test_trip_window(self):
         self.assertTrue(TRIP.fits(date(2026, 12, 30), date(2027, 1, 2)))
@@ -96,36 +100,51 @@ class GoogleFlights(unittest.TestCase):
 
     def test_origin_airports_sent(self):
         p = google_flights.params(TRIP, BUFFALO, CARIB, OUT, BACK, "k")
-        self.assertEqual((p["departure_id"], p["arrival_id"]), ("BUF", "CUN,PUJ,MBJ,SJD,PVR,VRA,AUA"))
+        self.assertEqual((p["departure_id"], p["arrival_id"]), ("BUF", "AUA,CUN,PUJ,MBJ,SJD,PVR,VRA"))
 
     def test_cheapest_option_and_destination(self):
-        f = google_flights.parse(TRIP, TORONTO, CARIB, OUT, BACK, gf_response([980, 640, 720]))
+        [f] = google_flights.parse(TRIP, TORONTO, CARIB, OUT, BACK, gf_response([980, 640, 720]))
         self.assertEqual(f.price, 640)
         self.assertEqual(f.place, "Cancún International Airport (CUN)")
         self.assertIn("WestJet, 1 stop", f.details)
         self.assertTrue(f.is_deal)
 
     def test_option_under_budget_but_not_a_deal(self):
-        f = google_flights.parse(TRIP, TORONTO, CARIB, OUT, BACK, gf_response([1200], level="typical"))
+        [f] = google_flights.parse(TRIP, TORONTO, CARIB, OUT, BACK, gf_response([1200], level="typical"))
         self.assertFalse(f.is_deal)
 
     def test_google_low_makes_it_a_deal(self):
-        f = google_flights.parse(TRIP, TORONTO, EUROPE, OUT, BACK, gf_response([1200], level="low"))
+        [f] = google_flights.parse(TRIP, TORONTO, EUROPE, OUT, BACK, gf_response([1200], level="low"))
         self.assertEqual(f.reasons, ["Google rates this price low"])
 
     def test_buffalo_travel_cost_counts_against_deal_mark(self):
-        toronto = google_flights.parse(TRIP, TORONTO, CARIB, OUT, BACK, gf_response([640]))
-        buffalo = google_flights.parse(TRIP, BUFFALO, CARIB, OUT, BACK, gf_response([640]))
+        [toronto] = google_flights.parse(TRIP, TORONTO, CARIB, OUT, BACK, gf_response([640]))
+        [buffalo] = google_flights.parse(TRIP, BUFFALO, CARIB, OUT, BACK, gf_response([640]))
         self.assertTrue(toronto.is_deal)
         self.assertFalse(buffalo.is_deal)              # 640 + 150 is over the 700 mark
         self.assertEqual((buffalo.origin, buffalo.total), ("Buffalo", 790))
         self.assertNotEqual(toronto.key, buffalo.key)
 
     def test_no_results(self):
-        self.assertIsNone(google_flights.parse(TRIP, TORONTO, CARIB, OUT, BACK, {"best_flights": []}))
+        self.assertEqual(google_flights.parse(TRIP, TORONTO, CARIB, OUT, BACK, {"best_flights": []}), [])
         with mock.patch.object(google_flights, "http_json",
                                return_value={"error": "Google Flights hasn't returned any results for this query."}):
-            self.assertIsNone(google_flights.search(TRIP, TORONTO, CARIB, OUT, BACK, "k"))
+            self.assertEqual(google_flights.search(TRIP, TORONTO, CARIB, OUT, BACK, "k"), [])
+
+    def test_cheapest_per_destination_in_a_region(self):
+        ams = gf_response([1190, 1300], level="typical", dest=("AMS", "Amsterdam Airport Schiphol"))
+        ber = gf_response([1050], dest=("BER", "Berlin Brandenburg"))
+        pdl = gf_response([890, 940], dest=("PDL", "João Paulo II Airport"))
+        data = {"best_flights": ams["best_flights"] + pdl["best_flights"],
+                "other_flights": ams["other_flights"] + ber["best_flights"] + pdl["other_flights"],
+                "price_insights": ams["price_insights"], "search_metadata": ams["search_metadata"]}
+        found = google_flights.parse(TRIP, TORONTO, EUROPE, OUT, BACK, data)
+        self.assertEqual([(f.place[-5:], f.price, f.is_deal) for f in found],
+                         [("(PDL)", 890, True), ("(BER)", 1050, False), ("(AMS)", 1190, False)])
+        self.assertEqual(len({f.key for f in found}), 3)
+        # Google's typical range describes the search's cheapest result only.
+        self.assertIn("Typical for this search", found[0].details)
+        self.assertNotIn("Typical", found[2].details)
 
 
 class Travelpayouts(unittest.TestCase):
@@ -251,12 +270,18 @@ class State(unittest.TestCase):
 
 
 class EndToEnd(unittest.TestCase):
+    @staticmethod
+    def gf_by_region(url, **kw):
+        """A 1,250 fare to the first airport of whichever region was searched."""
+        first = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)["arrival_id"][0].split(",")[0]
+        return gf_response([1250], dest=(first, first))
+
     def run_main(self, d, env, gf=None, tp_rows=None, rss=E2E_RSS, tp_error=None):
         argv = ["--state", str(Path(d) / "state.json")]
         cities = Travelpayouts.CITIES
         with mock.patch.dict("os.environ", env, clear=True), \
              mock.patch.object(deals, "datetime", wraps=datetime) as dt, \
-             mock.patch.object(google_flights, "http_json", side_effect=gf or (lambda *a, **k: gf_response([1250]))), \
+             mock.patch.object(google_flights, "http_json", side_effect=gf or self.gf_by_region), \
              mock.patch.object(travelpayouts, "city_countries", return_value=cities), \
              mock.patch.object(travelpayouts, "fetch_prices",
                                side_effect=tp_error or (lambda trip, origin, token: (tp_rows or {}).get(origin.name, []))), \

@@ -43,7 +43,8 @@ daily_summary = true         # quiet daily "nothing new, cheapest per region" pu
 
 # deal_price: at or under this a fare is flagged DEAL (an unusually good price for
 #   New Year's week). Between deal_price and max_price it's still shown as an option.
-# airports: up to 7 destinations Google Flights searches in one go for the region.
+# airports: up to 7 destinations Google Flights searches in one go for the region;
+#   you get the cheapest fare to EACH of them, not just the region's cheapest.
 # countries: ISO codes, used to sort Travelpayouts fares to anywhere into regions.
 # cities: Travelpayouts city codes that belong here even if their country is elsewhere.
 # keywords: place names that tie a deal-site post to the region (first match wins).
@@ -52,7 +53,7 @@ daily_summary = true         # quiet daily "nothing new, cheapest per region" pu
 [[regions]]
 name = "Caribbean & Mexico"
 deal_price = 700
-airports = "CUN,PUJ,MBJ,SJD,PVR,VRA,AUA"
+airports = "AUA,CUN,PUJ,MBJ,SJD,PVR,VRA"    # Aruba, Cancun, Punta Cana, Montego Bay, Los Cabos, Puerto Vallarta, Varadero
 countries = ["MX", "DO", "JM", "CU", "BS", "BB", "AW", "CW", "BQ", "SX", "MF", "PR", "VI", "VG",
              "TC", "KY", "LC", "AG", "KN", "DM", "GD", "VC", "TT", "HT", "BM", "GP", "MQ", "AI"]
 keywords = ["Caribbean", "Mexico", "Cancun", "Cancún", "Riviera Maya", "Puerto Vallarta", "Los Cabos",
@@ -97,11 +98,12 @@ keywords = ["Costa Rica", "San Jose", "Liberia", "Panama", "Guatemala", "Belize"
 [[regions]]
 name = "Europe"
 deal_price = 950
-airports = "LIS,MAD,BCN,FCO,CDG,LHR,DUB"
+airports = "LIS,PDL,AMS,BER,MAD,BCN,CDG"    # Lisbon, Sao Miguel (Azores), Amsterdam, Berlin, Madrid, Barcelona, Paris
 countries = ["PT", "ES", "FR", "IT", "GB", "IE", "DE", "NL", "BE", "LU", "CH", "AT", "GR", "IS",
              "DK", "SE", "NO", "FI", "PL", "CZ", "HU", "HR", "SI", "SK", "RO", "BG", "MT", "CY",
              "EE", "LV", "LT", "RS", "ME", "AL", "BA", "MK", "TR"]
-keywords = ["Europe", "Portugal", "Lisbon", "Porto", "Azores", "Ponta Delgada", "Spain", "Madrid",
+keywords = ["Europe", "Portugal", "Lisbon", "Porto", "Azores", "Ponta Delgada", "Sao Miguel",
+            "São Miguel", "Spain", "Madrid",
             "Barcelona", "France", "Paris", "Nice", "Italy", "Rome", "Milan", "Venice", "Naples",
             "UK", "London", "Manchester", "Scotland", "Edinburgh", "Glasgow", "Ireland", "Dublin",
             "Germany", "Frankfurt", "Munich", "Berlin", "Amsterdam", "Netherlands", "Brussels",

@@ -7,9 +7,9 @@ max_price = 1500                       # budget: anything at or under this gets 
 currency = "CAD"
 adults = 1
 # Exact date pairs for live Google Flights searches. Each run uses ONE pair,
-# rotating daily, for every origin and region: 2 origins x 3 regions, plus
-# Bogota and Rio from Toronto = 8 searches a day (about 240 a month). Each pair
-# is covered every 2 days.
+# rotating daily, for every origin and region: 5 regions from Toronto, 2 from
+# Buffalo, and 1 for hop trips = 8 searches a day (about 240 a month). Each
+# pair is covered every 2 days.
 google_trips = [
   ["2026-12-27", "2027-01-03"],
   ["2026-12-30", "2027-01-03"],
@@ -86,6 +86,7 @@ origins = ["Toronto"]
 [[regions]]
 name = "Central & South America"
 deal_price = 850
+origins = ["Toronto"]        # Buffalo is still covered here by Travelpayouts and the deal sites
 airports = "SJO,LIR,LIM,PTY,MDE,CTG,UIO"
 countries = ["CR", "PA", "GT", "BZ", "HN", "NI", "SV", "CO", "PE", "EC", "BR", "AR", "CL", "UY",
              "PY", "BO", "VE", "GY", "SR"]
@@ -110,6 +111,17 @@ keywords = ["Europe", "Portugal", "Lisbon", "Porto", "Azores", "Ponta Delgada", 
             "Zurich", "Geneva", "Vienna", "Greece", "Athens", "Iceland", "Reykjavik", "Copenhagen",
             "Stockholm", "Oslo", "Helsinki", "Prague", "Budapest", "Warsaw", "Krakow", "Croatia",
             "Zagreb", "Split", "Dubrovnik", "Istanbul", "Turkey", "Malta"]
+
+# Hop trips: fly to Medellin or Cartagena for the whole trip, and in the
+# middle take a separate round trip from there to somewhere nearby. Both
+# tickets are added up and compared with flying there directly.
+[hops]
+hubs = { MDE = "Medellín", CTG = "Cartagena" }
+onward = "LIM,CUZ,UIO,PTY,SJO,ADZ,SMR"   # Lima, Cusco, Quito, Panama City, San José CR, San Andrés, Santa Marta
+deal_price = 850             # both tickets together at or under this is a DEAL...
+min_saving_pct = 15          # ...or this much cheaper than flying there directly
+out_offset_days = 1          # second trip leaves the hub a day after you land
+back_offset_days = 1         # and is back a day before your flight home
 
 # Deal sites with public feeds. `url` can be the feed itself or the site's home
 # page (the feed link is found automatically). Add more by copying a block; a

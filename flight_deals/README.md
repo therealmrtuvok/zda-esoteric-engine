@@ -19,6 +19,17 @@ all. It deliberately does **not** scrape airline or booking sites: their terms
 forbid it, and they block it within days. YYZ Deals and Secret Flying block
 automated readers too, so subscribe to their emails directly.
 
+## Hop trips via Colombia
+
+The `[hops]` section prices a two-ticket trip: Toronto (or Buffalo) to Medellín
+or Cartagena for your whole stay, plus a separate round trip from there to
+Lima, Cusco, Quito, Panama City, San José, San Andrés or Santa Marta in the
+middle (leaving a day after you land, back a day before you fly home). The two
+tickets are added up and compared with flying to the same place directly. It's
+flagged as a DEAL when both together are under `deal_price` or at least
+`min_saving_pct` cheaper than direct. Because they're separate tickets, a
+delay on one isn't covered by the other, which is why the buffer days are there.
+
 ## What you get on your phone
 
 - **DEAL: Cancún CAD 610**: a fare at or under the region's `deal_price`, or
@@ -46,8 +57,8 @@ To check it right away, go to the Actions tab, open "Flight deals" and click
 
 ## Budget
 
-Google Flights searches: `len(google_trips) × regions` per run, so 2 × 3 = 6 a day,
-about 180 a month. Check that against your SerpApi plan. `python flight_deals/deals.py --dry-run`
+Google Flights searches: one date pair per run (rotating daily) × each origin's
+regions, plus one for hop trips: 8 a day, about 240 a month. Check that against your SerpApi plan. `python flight_deals/deals.py --dry-run`
 lists them without spending any. Travelpayouts and the feeds are free.
 
 ## Running locally

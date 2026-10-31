@@ -13,6 +13,7 @@ sys.path.insert(0, str(HERE))
 import deals  # noqa: E402
 import feeds  # noqa: E402
 import google_flights  # noqa: E402
+import hops  # noqa: E402
 import travelpayouts  # noqa: E402
 from common import Feed, Finding, load_config  # noqa: E402
 
@@ -89,11 +90,11 @@ class GoogleFlights(unittest.TestCase):
     def test_plan_one_date_pair_per_day_for_every_origin_and_region(self):
         day1 = google_flights.plan(TRIP, CFG.regions, date(2026, 11, 1))
         day2 = google_flights.plan(TRIP, CFG.regions, date(2026, 11, 2))
-        self.assertEqual(len(day1), 8)
-        self.assertEqual(len(day1), CFG.settings.max_searches_per_run)
+        self.assertEqual(len(day1), 7)               # + 1 hop search = the 8 a day budget
+        self.assertEqual(len(day1) + 1, CFG.settings.max_searches_per_run)
         self.assertEqual([(o.name, r.name) for o, r, _, _ in day1],
                          [("Toronto", r.name) for r in CFG.regions]
-                         + [("Buffalo", n) for n in ("Caribbean & Mexico", "Central & South America", "Europe")])
+                         + [("Buffalo", n) for n in ("Caribbean & Mexico", "Europe")])
         self.assertEqual({(o, b) for _, _, o, b in day1} | {(o, b) for _, _, o, b in day2},
                          set(TRIP.google_trips))
         self.assertEqual(len({(o, b) for _, _, o, b in day1}), 1)
@@ -250,6 +251,91 @@ class Feeds(unittest.TestCase):
         self.assertEqual(len(self.scan(xml, Feed("YYZ", "x", from_origin_only=True))), 2)  # + Montreal-Paris post
 
 
+def fare(origin, src, dest, price, out, back, leg=False, source="Google Flights"):
+    return Finding(key=f"{origin}|{src}|{dest}|{out}", source=source, origin=origin, kind="fare",
+                   place=f"{dest} airport ({dest})", expires=out, price=price, depart=out, ret=back,
+                   details=f"Airline {dest}", url=f"https://x/{src}-{dest}", from_code=src,
+                   dest_code=dest, leg=leg, extra_cost=150 if origin == "Buffalo" else 0)
+
+
+class Hops(unittest.TestCase):
+    H = CFG.hops
+    D27, J03, D28, J02 = date(2026, 12, 27), date(2027, 1, 3), date(2026, 12, 28), date(2027, 1, 2)
+
+    def test_shipped_config(self):
+        self.assertEqual(self.H.hubs, {"MDE": "Medellín", "CTG": "Cartagena"})
+        self.assertEqual(hops.leg_dates(self.H, self.D27, self.J03), (self.D28, self.J02))
+
+    def test_pairs_cheapest_first_and_second_ticket_and_compares_with_direct(self):
+        found = [
+            fare("Toronto", "YYZ", "MDE", 520, self.D27, self.J03),
+            fare("Toronto", "YYZ", "CTG", 610, self.D27, self.J03),
+            fare("Toronto", "YYZ", "LIM", 1180, self.D27, self.J03),           # flying direct
+            fare("Medellín", "MDE", "LIM", 290, self.D28, self.J02, leg=True),
+            fare("Cartagena", "CTG", "LIM", 180, self.D28, self.J02, leg=True),
+            fare("Medellín", "MDE", "CUZ", 990, self.D28, self.J02, leg=True),  # 1,510: over budget
+            fare("Cartagena", "CTG", "ADZ", 150, self.D27, self.J02, leg=True),  # leaves before you land
+        ]
+        combos = hops.combine(TRIP, self.H, found)
+        self.assertEqual([(c.place, c.price) for c in combos],
+                         [("LIM airport (LIM) via Cartagena", 790), ("CUZ airport (CUZ) via Medellín", 1510)])
+        lim = combos[0]
+        self.assertTrue(lim.is_deal)
+        self.assertEqual(lim.reasons, ["both tickets together under CAD 850",
+                                       "saves 33% over flying there directly"])
+        self.assertIn("Flying Toronto to LIM directly instead: CAD 1,180 (the hop saves CAD 390)", lim.details)
+        self.assertIn("Second ticket: https://x/CTG-LIM", lim.details)
+        self.assertEqual((lim.region, lim.depart, lim.ret, lim.url), (hops.REGION, self.D27, self.J03, "https://x/YYZ-CTG"))
+
+    def test_buffalo_pays_its_travel_cost(self):
+        found = [fare("Buffalo", "BUF", "MDE", 600, self.D27, self.J03),
+                 fare("Medellín", "MDE", "PTY", 200, self.D28, self.J02, leg=True)]
+        [c] = hops.combine(TRIP, self.H, found)
+        self.assertEqual((c.origin, c.price, c.total, c.is_deal), ("Buffalo", 800, 950, False))
+
+    def test_google_legs_are_named_by_hub(self):
+        data = gf_response([240], dest=("LIM", "Jorge Chávez"))
+        data["best_flights"][0]["flights"][0]["departure_airport"] = {"id": "CTG"}
+        with mock.patch.object(google_flights, "http_json", return_value=data) as get:
+            [leg] = hops.google_legs(TRIP, self.H, self.D27, self.J03, "k")
+        q = urllib.parse.parse_qs(urllib.parse.urlparse(get.call_args.args[0]).query)
+        self.assertEqual((q["departure_id"][0], q["outbound_date"][0], q["return_date"][0]),
+                         ("MDE,CTG", "2026-12-28", "2027-01-02"))
+        self.assertEqual((leg.origin, leg.from_code, leg.dest_code, leg.leg, leg.is_deal),
+                         ("Cartagena", "CTG", "LIM", True, False))
+
+    def test_travelpayouts_legs_filtered_to_onward_and_dates(self):
+        def rows(trip, origin, token):
+            r = Travelpayouts().row
+            return [r("LIM", 260, out="2026-12-29", back="2027-01-02"),
+                    r("LIM", 230, out="2026-12-29", back="2027-01-02"),
+                    r("LIM", 200, out="2026-12-20", back="2026-12-24"),   # before the trip
+                    r("CUN", 150, out="2026-12-29", back="2027-01-02")]   # not an onward stop
+        with mock.patch.object(travelpayouts, "fetch_prices", side_effect=rows):
+            legs, errors = hops.travelpayouts_legs(TRIP, self.H, "t", {"LIM": ("Lima", "PE")})
+        self.assertEqual(errors, [])
+        self.assertEqual(sorted((l.origin, l.dest_code, l.price) for l in legs),
+                         [("Cartagena", "LIM", 230), ("Medellín", "LIM", 230)])
+
+    def test_end_to_end_hop_alert(self):
+        def gf(url, **kw):
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)
+            if q["departure_id"][0] == "MDE,CTG":
+                data = gf_response([210], dest=("PTY", "Tocumen"))
+                data["best_flights"][0]["flights"][0]["departure_airport"] = {"id": "MDE"}
+                return data
+            if q["arrival_id"][0].startswith("SJO"):
+                data = gf_response([480], dest=("MDE", "José María Córdova"))
+                data["other_flights"] = gf_response([1100], dest=("PTY", "Tocumen"))["best_flights"]
+                return data
+            return {"best_flights": []}
+        with tempfile.TemporaryDirectory() as d:
+            _, sent = EndToEnd().run_main(d, {"SERPAPI_KEY": "k", "NTFY_TOPIC": "t"}, gf=gf, rss=b"<rss/>")
+        hop = [m for m in sent if "via" in m["title"]]
+        self.assertEqual([m["title"] for m in hop], ["DEAL: Toronto to Tocumen (PTY) via Medellín CAD 690"])
+        self.assertIn("(the hop saves CAD 410)", hop[0]["message"])
+
+
 class State(unittest.TestCase):
     def finding(self, price, key="gf|x"):
         return Finding(key=key, source="s", origin="Toronto", kind="fare", place="p",
@@ -306,9 +392,10 @@ class EndToEnd(unittest.TestCase):
                                           "DEAL: Buffalo to Cancun (CUN) CAD 520"])
             self.assertIn("CAD 520 (+150 to get to Buffalo)", sent[1]["message"])
             self.assertTrue(titles[2].startswith("Sale post: Toronto to Cancun $489"))
-            # Google Flights: 5 from Toronto at 1,250, 3 from Buffalo at 1,250 + 150 = 1,400,
+            # Google Flights: 5 from Toronto at 1,250, 2 from Buffalo at 1,250 + 150 = 1,400,
             # plus Lisbon from Toronto at 1,300. Lisbon from Buffalo (1,550) is over budget.
-            self.assertEqual(titles[3], "9 new options under CAD 1,500")
+            # Hop legs (the 8th search) are never alerted on their own.
+            self.assertEqual(titles[3], "8 new options under CAD 1,500")
             self.assertEqual(len(sent), 4)
             self.assertNotIn("1,400 (+150", sent[3]["message"])
 

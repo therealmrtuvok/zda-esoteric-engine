@@ -58,6 +58,17 @@ class Feed:
 
 
 @dataclass
+class Hops:
+    """Fly to a hub first, then take a separate round trip from there."""
+    hubs: dict[str, str]             # airport code -> name, e.g. {"MDE": "Medellín"}
+    onward: str                      # where to go from the hub (Google Flights codes, 7 max)
+    deal_price: float = 850          # total for both tickets at or under this is a DEAL
+    min_saving_pct: float = 15       # ...or this much cheaper than flying there directly
+    out_offset_days: int = 1         # second trip leaves the hub this long after you land
+    back_offset_days: int = 1        # ...and is back this long before your flight home
+
+
+@dataclass
 class Settings:
     max_searches_per_run: int = 6    # Google Flights searches per run (SerpApi quota)
     realert_drop_pct: float = 10.0
@@ -72,6 +83,7 @@ class Config:
     regions: list[Region]
     feeds: list[Feed]
     settings: Settings
+    hops: Hops | None = None
 
 
 def _d(s: str) -> date:
@@ -106,7 +118,10 @@ def load_config(path: Path) -> Config:
             raise ValueError(f"{region.name}: Google Flights takes at most 7 destination airports")
         regions.append(region)
     feeds = [Feed(**f) for f in raw.get("feeds", [])]
-    return Config(trip, regions, feeds, Settings(**raw.get("settings", {})))
+    hops = Hops(**raw["hops"]) if raw.get("hops") else None
+    if hops and len(hops.onward.split(",")) > 7:
+        raise ValueError("hops.onward: Google Flights takes at most 7 destination airports")
+    return Config(trip, regions, feeds, Settings(**raw.get("settings", {})), hops)
 
 
 # ---------------------------------------------------------------- findings
@@ -127,6 +142,9 @@ class Finding:
     details: str = ""                # airline and stops, or a post excerpt
     url: str | None = None
     extra_cost: float = 0            # the origin's travel cost, added to compare fairly
+    from_code: str = ""              # departure airport/city code
+    dest_code: str = ""              # destination airport/city code
+    leg: bool = False                # one half of a hop trip: priced, but never alerted on its own
     is_deal: bool = False
     reasons: list[str] = field(default_factory=list)
 

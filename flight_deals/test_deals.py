@@ -82,8 +82,9 @@ class Config(unittest.TestCase):
 
     def test_trip_window(self):
         self.assertTrue(TRIP.fits(date(2026, 12, 30), date(2027, 1, 2)))
-        self.assertFalse(TRIP.fits(date(2026, 12, 26), date(2027, 1, 2)))
-        self.assertFalse(TRIP.fits(date(2026, 12, 28), date(2027, 1, 5)))
+        self.assertTrue(TRIP.fits(date(2026, 12, 31), date(2027, 1, 6)))   # back by Jan 6
+        self.assertFalse(TRIP.fits(date(2026, 12, 29), date(2027, 1, 5)))  # can't leave before the 30th
+        self.assertFalse(TRIP.fits(date(2026, 12, 30), date(2027, 1, 7)))
 
 
 class GoogleFlights(unittest.TestCase):
@@ -153,7 +154,7 @@ class Travelpayouts(unittest.TestCase):
               "LIM": ("Lima", "PE"), "BOG": ("Bogota", "CO"), "RIO": ("Rio de Janeiro", "BR"),
               "SAO": ("Sao Paulo", "BR")}
 
-    def row(self, dest, price, out="2026-12-28", back="2027-01-03"):
+    def row(self, dest, price, out="2026-12-30", back="2027-01-05"):
         return {"destination": dest, "price": price, "airline": "WS", "transfers": 0,
                 "departure_at": f"{out}T07:00:00-05:00", "return_at": f"{back}T15:00:00-05:00",
                 "link": f"/search/YTO{dest}"}
@@ -307,10 +308,10 @@ class Hops(unittest.TestCase):
     def test_travelpayouts_legs_filtered_to_onward_and_dates(self):
         def rows(trip, origin, token):
             r = Travelpayouts().row
-            return [r("LIM", 260, out="2026-12-29", back="2027-01-02"),
-                    r("LIM", 230, out="2026-12-29", back="2027-01-02"),
+            return [r("LIM", 260, out="2026-12-31", back="2027-01-04"),
+                    r("LIM", 230, out="2026-12-31", back="2027-01-04"),
                     r("LIM", 200, out="2026-12-20", back="2026-12-24"),   # before the trip
-                    r("CUN", 150, out="2026-12-29", back="2027-01-02")]   # not an onward stop
+                    r("CUN", 150, out="2026-12-31", back="2027-01-04")]   # not an onward stop
         with mock.patch.object(travelpayouts, "fetch_prices", side_effect=rows):
             legs, errors = hops.travelpayouts_legs(TRIP, self.H, "t", {"LIM": ("Lima", "PE")})
         self.assertEqual(errors, [])

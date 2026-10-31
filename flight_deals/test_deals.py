@@ -4,7 +4,7 @@ import sys
 import tempfile
 import unittest
 import urllib.parse
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from unittest import mock
 
@@ -260,7 +260,7 @@ def fare(origin, src, dest, price, out, back, leg=False, source="Google Flights"
 
 
 class Hops(unittest.TestCase):
-    H = CFG.hops
+    H = CFG.hops[0]
     D27, J03, D28, J02 = date(2026, 12, 27), date(2027, 1, 3), date(2026, 12, 28), date(2027, 1, 2)
 
     def test_shipped_config(self):
@@ -286,7 +286,7 @@ class Hops(unittest.TestCase):
                                        "saves 33% over flying there directly"])
         self.assertIn("Flying Toronto to LIM directly instead: CAD 1,180 (the hop saves CAD 390)", lim.details)
         self.assertIn("Second ticket: https://x/CTG-LIM", lim.details)
-        self.assertEqual((lim.region, lim.depart, lim.ret, lim.url), (hops.REGION, self.D27, self.J03, "https://x/YYZ-CTG"))
+        self.assertEqual((lim.region, lim.depart, lim.ret, lim.url), ("Hop via Colombia", self.D27, self.J03, "https://x/YYZ-CTG"))
 
     def test_buffalo_pays_its_travel_cost(self):
         found = [fare("Buffalo", "BUF", "MDE", 600, self.D27, self.J03),
@@ -335,6 +335,52 @@ class Hops(unittest.TestCase):
         hop = [m for m in sent if "via" in m["title"]]
         self.assertEqual([m["title"] for m in hop], ["DEAL: Toronto to Tocumen (PTY) via Medellín CAD 690"])
         self.assertIn("(the hop saves CAD 410)", hop[0]["message"])
+
+
+class RioViaUS(unittest.TestCase):
+    G = CFG.hops[1]
+    D30, J05, J04 = date(2026, 12, 30), date(2027, 1, 5), date(2027, 1, 4)
+
+    def test_shipped_config(self):
+        self.assertEqual(self.G.name, "Rio via the US")
+        self.assertEqual(set(self.G.hubs), {"MIA", "JFK", "IAH", "ATL"})
+        self.assertEqual(hops.leg_dates(self.G, self.D30, self.J05), (self.D30, self.J04))
+
+    def test_groups_take_turns_and_cover_both_date_pairs(self):
+        seen = set()
+        for day in range(8):
+            d = date(2026, 11, 1) + timedelta(days=day)
+            pair = TRIP.google_trips[d.toordinal() % len(TRIP.google_trips)]
+            seen.add((hops.todays_group(CFG.hops, TRIP, d).name, pair[0]))
+        self.assertEqual(len(seen), 4)        # every group x date pair within 4 days
+
+    def test_positioning_trip_same_day_out_buffer_day_back(self):
+        tp = Travelpayouts().row
+        home_rows = [tp("MIA", 380), tp("NYC", 300), tp("CUN", 500)]
+        first = hops.travelpayouts_first_legs(TRIP, self.G, TORONTO, home_rows)
+        self.assertEqual(sorted((f.dest_code, f.price, f.leg) for f in first),
+                         [("JFK", 300, True), ("MIA", 380, True)])       # NYC -> JFK; Cancun isn't a hub
+        found = first + [
+            fare("Miami", "MIA", "GIG", 900, self.D30, self.J04, leg=True),   # overnight, same day out
+            fare("New York", "JFK", "GIG", 1150, self.D30, self.J04, leg=True),
+            fare("Miami", "MIA", "GIG", 700, self.D30, self.J05, leg=True),   # no buffer day back: skipped
+            fare("Toronto", "YYZ", "GIG", 1480, self.D30, self.J05),           # flying direct
+        ]
+        [c] = hops.combine(TRIP, self.G, found)
+        self.assertEqual((c.place, c.price, c.region), ("GIG airport (GIG) via Miami", 1280, "Rio via the US"))
+        self.assertIn("(the hop saves CAD 200)", c.details)
+        self.assertEqual(c.reasons, ["saves 14% over flying there directly"])
+
+    def test_travelpayouts_rio_legs_use_city_codes(self):
+        calls = []
+        def rows(trip, origin, token):
+            calls.append(origin.city)
+            return [Travelpayouts().row("RIO", 850, out="2026-12-30", back="2027-01-04")]
+        with mock.patch.object(travelpayouts, "fetch_prices", side_effect=rows):
+            legs, _ = hops.travelpayouts_legs(TRIP, self.G, "t", {"RIO": ("Rio de Janeiro", "BR")})
+        self.assertEqual(sorted(calls), ["ATL", "HOU", "MIA", "NYC"])
+        self.assertEqual({(l.from_code, l.dest_code) for l in legs},
+                         {("MIA", "RIO"), ("JFK", "RIO"), ("IAH", "RIO"), ("ATL", "RIO")})
 
 
 class State(unittest.TestCase):

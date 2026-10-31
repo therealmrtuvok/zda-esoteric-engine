@@ -112,16 +112,36 @@ keywords = ["Europe", "Portugal", "Lisbon", "Porto", "Azores", "Ponta Delgada", 
             "Stockholm", "Oslo", "Helsinki", "Prague", "Budapest", "Warsaw", "Krakow", "Croatia",
             "Zagreb", "Split", "Dubrovnik", "Istanbul", "Turkey", "Malta"]
 
-# Hop trips: fly to Medellin or Cartagena for the whole trip, and in the
-# middle take a separate round trip from there to somewhere nearby. Both
-# tickets are added up and compared with flying there directly.
-[hops]
+# Hop trips: two separate tickets. Fly home -> hub for the whole stay, and
+# take a separate round trip hub -> destination inside it. Both tickets are
+# added up and compared with flying there directly. Groups take turns for the
+# one daily Google Flights hop search; Travelpayouts checks all of them daily.
+
+# Fly to Medellin or Cartagena for the whole trip, and in the middle take a
+# trip from there to somewhere nearby.
+[[hops]]
+name = "Hop via Colombia"
 hubs = { MDE = "Medellín", CTG = "Cartagena" }
 onward = "LIM,CUZ,UIO,PTY,SJO,ADZ,SMR"   # Lima, Cusco, Quito, Panama City, San José CR, San Andrés, Santa Marta
 deal_price = 850             # both tickets together at or under this is a DEAL...
 min_saving_pct = 15          # ...or this much cheaper than flying there directly
 out_offset_days = 1          # second trip leaves the hub a day after you land
 back_offset_days = 1         # and is back a day before your flight home
+
+# Position in a US city with nonstops to Rio, then fly a separate Rio ticket:
+# Toronto -> Miami in the morning, the overnight Miami -> Rio that evening
+# (lands the morning of the 31st). Coming home, the overnight from Rio lands
+# a day before your flight back to Toronto.
+[[hops]]
+name = "Rio via the US"
+hubs = { MIA = "Miami", JFK = "New York", IAH = "Houston", ATL = "Atlanta" }
+tp_cities = { JFK = "NYC", IAH = "HOU" }  # Travelpayouts uses city codes
+onward = "GIG,SDU"
+onward_cities = ["RIO"]
+deal_price = 1100            # same mark as Rio direct
+min_saving_pct = 10
+out_offset_days = 0          # same-day positioning: book a long connection (4h+)
+back_offset_days = 1
 
 # Deal sites with public feeds. `url` can be the feed itself or the site's home
 # page (the feed link is found automatically). Add more by copying a block; a

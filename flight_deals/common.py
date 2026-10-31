@@ -60,8 +60,11 @@ class Feed:
 @dataclass
 class Hops:
     """Fly to a hub first, then take a separate round trip from there."""
+    name: str                        # e.g. "Hop via Colombia"; also its region name in alerts
     hubs: dict[str, str]             # airport code -> name, e.g. {"MDE": "Medellín"}
     onward: str                      # where to go from the hub (Google Flights codes, 7 max)
+    onward_cities: list[str] = field(default_factory=list)  # Travelpayouts city codes, e.g. ["RIO"]
+    tp_cities: dict[str, str] = field(default_factory=dict)  # hub airport -> Travelpayouts city, e.g. JFK -> NYC
     deal_price: float = 850          # total for both tickets at or under this is a DEAL
     min_saving_pct: float = 15       # ...or this much cheaper than flying there directly
     out_offset_days: int = 1         # second trip leaves the hub this long after you land
@@ -83,7 +86,7 @@ class Config:
     regions: list[Region]
     feeds: list[Feed]
     settings: Settings
-    hops: Hops | None = None
+    hops: list[Hops] = field(default_factory=list)
 
 
 def _d(s: str) -> date:
@@ -118,9 +121,12 @@ def load_config(path: Path) -> Config:
             raise ValueError(f"{region.name}: Google Flights takes at most 7 destination airports")
         regions.append(region)
     feeds = [Feed(**f) for f in raw.get("feeds", [])]
-    hops = Hops(**raw["hops"]) if raw.get("hops") else None
-    if hops and len(hops.onward.split(",")) > 7:
-        raise ValueError("hops.onward: Google Flights takes at most 7 destination airports")
+    hops = [Hops(**h) for h in raw.get("hops", [])]
+    for h in hops:
+        if len(h.onward.split(",")) > 7:
+            raise ValueError(f"hops {h.name}: Google Flights takes at most 7 destination airports")
+        if h.name in {r.name for r in regions}:
+            raise ValueError(f"hops {h.name}: name clashes with a region")
     return Config(trip, regions, feeds, Settings(**raw.get("settings", {})), hops)
 
 

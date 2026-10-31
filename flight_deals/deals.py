@@ -131,7 +131,7 @@ def format_digest(items: list[Finding], cfg: Config) -> dict:
 
 def format_summary(findings: list[Finding], cfg: Config, checked: list[str]) -> dict:
     lines = []
-    names = [r.name for r in cfg.regions] + ([hops_src.REGION] if cfg.hops else [])
+    names = [r.name for r in cfg.regions] + [h.name for h in cfg.hops]
     for name in names:
         lines.append(f"{name}:")
         for origin in cfg.trip.origins:
@@ -186,16 +186,17 @@ def collect(cfg: Config, now: datetime, log=print) -> tuple[list[Finding], list[
                 + (", ".join(f"{f.place.rsplit('(', 1)[-1].rstrip(')')} {f.price:,.0f}" for f in found)
                    or "no results"))
             findings.extend(found)
-        if cfg.hops and cfg.trip.google_trips and len(searches) < cfg.settings.max_searches_per_run:
+        group = hops_src.todays_group(cfg.hops, cfg.trip, now.date())
+        if group and cfg.trip.google_trips and len(searches) < cfg.settings.max_searches_per_run:
             out, back = cfg.trip.google_trips[now.date().toordinal() % len(cfg.trip.google_trips)]
             try:
-                legs = hops_src.google_legs(cfg.trip, cfg.hops, out, back, key)
+                legs = hops_src.google_legs(cfg.trip, group, out, back, key)
                 ok += 1
-                log(f"  Google Flights hop legs from {', '.join(cfg.hops.hubs.values())}: "
+                log(f"  Google Flights {group.name} legs: "
                     + (", ".join(f"{f.from_code}-{f.dest_code} {f.price:,.0f}" for f in legs) or "no results"))
                 findings.extend(legs)
             except Exception as e:
-                errors.append(f"Google Flights hop legs: {e}")
+                errors.append(f"Google Flights {group.name} legs: {e}")
         if ok:
             checked.append(f"Google Flights ({ok} searches)")
     else:
@@ -214,14 +215,16 @@ def collect(cfg: Config, now: datetime, log=print) -> tuple[list[Finding], list[
                     errors.append(f"Travelpayouts {origin.name}: {e}")
                     continue
                 tp_ok += 1
+                for group in cfg.hops:
+                    findings.extend(hops_src.travelpayouts_first_legs(cfg.trip, group, origin, rows))
                 found = travelpayouts.parse(cfg.trip, origin, cfg.regions, rows, cities)
                 log(f"  Travelpayouts {origin.name}: {len(rows)} fares seen, "
                     f"{len(found)} destinations fit your dates and regions")
                 findings.extend(found)
-            if cfg.hops:
-                legs, errs = hops_src.travelpayouts_legs(cfg.trip, cfg.hops, token, cities)
+            for group in cfg.hops:
+                legs, errs = hops_src.travelpayouts_legs(cfg.trip, group, token, cities)
                 errors.extend(errs)
-                log(f"  Travelpayouts hop legs: {len(legs)} fares from {', '.join(cfg.hops.hubs.values())}")
+                log(f"  Travelpayouts {group.name} legs: {len(legs)} fares from {', '.join(group.hubs.values())}")
                 findings.extend(legs)
             if tp_ok:
                 checked.append("Travelpayouts")
@@ -244,10 +247,12 @@ def collect(cfg: Config, now: datetime, log=print) -> tuple[list[Finding], list[
         if feed_ok:
             checked.append(f"{feed_ok} deal site{'s' * (feed_ok != 1)}")
 
-    if cfg.hops:
-        combos = hops_src.combine(cfg.trip, cfg.hops, findings)
-        log(f"  Hop trips via {', '.join(cfg.hops.hubs.values())}: {len(combos)} priced")
-        findings.extend(combos)
+    combos = []
+    for group in cfg.hops:
+        found = hops_src.combine(cfg.trip, group, findings)
+        log(f"  {group.name}: {len(found)} trips priced")
+        combos.extend(found)
+    findings.extend(combos)
 
     # The same post can show up on several sites (or twice in one feed); keep the first.
     unique = list({f.key: f for f in reversed(findings)}.values())[::-1]
@@ -266,10 +271,12 @@ def run(args) -> int:
         print("Google Flights searches today" + ("" if os.environ.get("SERPAPI_KEY") else " (SERPAPI_KEY not set)") + ":")
         for origin, region, out, back in google_flights.plan(cfg.trip, cfg.regions, today)[: cfg.settings.max_searches_per_run]:
             print(f"  {origin.airports} -> {region.airports}  {out} to {back}  ({origin.name} to {region.name})")
-        if cfg.hops:
+        group = hops_src.todays_group(cfg.hops, cfg.trip, today)
+        if group and cfg.trip.google_trips:
             out, back = cfg.trip.google_trips[today.toordinal() % len(cfg.trip.google_trips)]
-            lo, lb = hops_src.leg_dates(cfg.hops, out, back)
-            print(f"  {','.join(cfg.hops.hubs)} -> {cfg.hops.onward}  {lo} to {lb}  (hop legs)")
+            lo, lb = hops_src.leg_dates(group, out, back)
+            print(f"  {','.join(group.hubs)} -> {group.onward}  {lo} to {lb}  ({group.name} legs; "
+                  f"hop groups take turns: {', '.join(h.name for h in cfg.hops)})")
         print("Travelpayouts: " + ("on" if os.environ.get("TRAVELPAYOUTS_TOKEN") else "off (TRAVELPAYOUTS_TOKEN not set)"))
         print("Feeds: " + ", ".join(f.name for f in cfg.feeds))
         return 0

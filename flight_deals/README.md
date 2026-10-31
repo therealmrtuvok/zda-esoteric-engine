@@ -19,16 +19,25 @@ all. It deliberately does **not** scrape airline or booking sites: their terms
 forbid it, and they block it within days. YYZ Deals and Secret Flying block
 automated readers too, so subscribe to their emails directly.
 
-## Hop trips via Colombia
+## Hop trips (two tickets)
 
-The `[hops]` section prices a two-ticket trip: Toronto (or Buffalo) to Medellín
-or Cartagena for your whole stay, plus a separate round trip from there to
-Lima, Cusco, Quito, Panama City, San José, San Andrés or Santa Marta in the
-middle (leaving a day after you land, back a day before you fly home). The two
-tickets are added up and compared with flying to the same place directly. It's
-flagged as a DEAL when both together are under `deal_price` or at least
-`min_saving_pct` cheaper than direct. Because they're separate tickets, a
-delay on one isn't covered by the other, which is why the buffer days are there.
+Each `[[hops]]` group prices a two-ticket trip: home to a hub for the whole
+stay, plus a separate round trip from the hub inside it. The two tickets are
+added up and compared with flying to the same place directly; it's a DEAL when
+both together are under `deal_price` or at least `min_saving_pct` cheaper.
+
+- **Hop via Colombia**: Toronto (or Buffalo) to Medellín or Cartagena, with a
+  trip to Lima, Cusco, Quito, Panama City, San José, San Andrés or Santa Marta
+  in the middle (a day after you land, back a day before you fly home).
+- **Rio via the US**: Toronto to Miami, New York (JFK), Houston or Atlanta, the
+  cities with nonstops to Rio, connecting the same day onto a separate overnight
+  ticket to Rio, and back a day early. Toronto to the US city is priced from
+  Travelpayouts, so this group needs `TRAVELPAYOUTS_TOKEN`.
+
+Groups take turns for the one daily Google Flights hop search (every 2 days
+each); Travelpayouts checks every group every day. Separate tickets mean a
+delay on one isn't covered by the other: leave a buffer day, or for same-day
+positioning, a long (4h+) connection.
 
 ## What you get on your phone
 
@@ -58,7 +67,7 @@ To check it right away, go to the Actions tab, open "Flight deals" and click
 ## Budget
 
 Google Flights searches: one date pair per run (rotating daily) × each origin's
-regions, plus one for hop trips: 8 a day, about 240 a month. Check that against your SerpApi plan. `python flight_deals/deals.py --dry-run`
+regions, plus one hop search (groups take turns): 8 a day, about 240 a month. Check that against your SerpApi plan. `python flight_deals/deals.py --dry-run`
 lists them without spending any. Travelpayouts and the feeds are free.
 
 ## Running locally

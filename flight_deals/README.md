@@ -1,50 +1,67 @@
 # Flight deal watcher
 
-Searches Google Flights (through [SerpApi](https://serpapi.com/google-flights-api)) for
-the routes in `config.toml`, and pushes a phone notification through
-[ntfy](https://ntfy.sh) when a fare is a deal. Runs once a day on GitHub Actions.
-Standard library only (Python 3.11+); unrelated to the engine in the rest of this repo.
+Watches for flights for one trip (set in `config.toml`; currently Toronto, New
+Year's 2026–27, to the Caribbean & Mexico, Central & South America, or Europe,
+under CA$1,500) and pushes what it finds to your phone with
+[ntfy](https://ntfy.sh). Runs daily on GitHub Actions. Standard library only
+(Python 3.11+); unrelated to the engine in the rest of this repo.
 
-A fare is a **deal** when the cheapest option is at or under the route's `max_price`,
-**or** Google Flights rates the price "low" for that route (`alert_on_google_low`).
-Each deal is pushed once; it's pushed again only if the price drops another
-`realert_drop_pct` percent. The notification opens the search in Google Flights.
+## Sources
+
+| Source | What it finds | Needs |
+|---|---|---|
+| **Google Flights** via [SerpApi](https://serpapi.com/google-flights-api) | Live prices for your exact dates. One search covers a whole region (up to 7 airports). | `SERPAPI_KEY` |
+| **[Travelpayouts](https://www.travelpayouts.com)** (Aviasales data) | Cheapest fares from your city to *anywhere* that other travellers saw recently. Good for discovering destinations. Prices can be stale. | `TRAVELPAYOUTS_TOKEN` |
+| **Deal-site feeds** (Flytrippers, The Flight Deal, Fly4free, r/flightdeals) | Sale and error-fare posts that mention your city, a region, the holidays and a price within budget. | nothing |
+
+Each source runs only when its key is set, so the feeds work with no setup at
+all. It deliberately does **not** scrape airline or booking sites: their terms
+forbid it, and they block it within days. YYZ Deals and Secret Flying block
+automated readers too, so subscribe to their emails directly.
+
+## What you get on your phone
+
+- **DEAL: Cancún CAD 610**: a fare at or under the region's `deal_price`, or
+  one Google rates "low". High priority, one push each, tap to open.
+- **Sale post: …**: a matching deal-site post. Check that it covers your dates.
+- **7 new options under CAD 1,500**: everything else within budget, in one digest.
+- **No new flight deals today**: a silent daily summary with the cheapest fare
+  per region, so you can watch the trend.
+- **Every source failed**: if a key is wrong or a quota is used up.
+
+Each find is pushed once, and again only if it gets 10% cheaper.
 
 ## Setup
 
-1. **SerpApi key**: sign up at serpapi.com and copy your API key from the dashboard.
-2. **ntfy**: install the ntfy app (iOS/Android) and subscribe to a topic with a long,
-   unguessable name, e.g. `flights-7f3k9q2xw`. Anyone who knows the name can read
-   it, so treat it like a password.
-3. **Repo secrets** (Settings → Secrets and variables → Actions → New repository secret):
-   - `SERPAPI_KEY`: your SerpApi key
-   - `NTFY_TOPIC`: your topic name
-   - `NTFY_TOKEN`: optional, only if you use a protected topic on your own ntfy server
-4. **Edit `config.toml`**: the routes in it are placeholders (Boston to Lisbon/Tokyo).
-5. **Check it**: Actions tab → "Flight deals" → *Run workflow*.
+1. **ntfy**: install the ntfy app and subscribe to a long, unguessable topic name.
+2. **SerpApi**: sign up at serpapi.com and copy your API key.
+3. **Travelpayouts**: sign up at travelpayouts.com, then copy your API token
+   from the Developers / API section of your profile.
+4. **Repo secrets** (Settings → Secrets and variables → Actions → New repository secret):
+   `NTFY_TOPIC`, `SERPAPI_KEY`, `TRAVELPAYOUTS_TOKEN`.
+5. The daily schedule only runs from the default branch, so this needs to be merged to `main`.
 
-Until both secrets are set, the scheduled job does nothing and passes.
+To check it right away, go to the Actions tab, open "Flight deals" and click
+*Run workflow*. It also re-runs whenever this folder changes.
 
-## Watching your search budget
+## Budget
 
-Each (departure date × trip length) is one SerpApi search. `python deals.py --dry-run`
-lists them without spending any. Monthly usage is about
-`searches per run × runs per day × 30`; the example config is 3 × 1 × 30 = 90.
-Check your SerpApi plan's monthly allowance. `max_searches_per_run` is a hard cap.
-The cron schedule is in `.github/workflows/flight-deals.yml`.
-
-If every search in a run fails (bad key, quota used up), you get a warning push
-instead of silence.
+Google Flights searches: `len(google_trips) × regions` per run, so 2 × 3 = 6 a day,
+about 180 a month. Check that against your SerpApi plan. `python flight_deals/deals.py --dry-run`
+lists them without spending any. Travelpayouts and the feeds are free.
 
 ## Running locally
 
 ```sh
-export SERPAPI_KEY=... NTFY_TOPIC=...
+export SERPAPI_KEY=... TRAVELPAYOUTS_TOKEN=... NTFY_TOPIC=...
 python flight_deals/deals.py --test-notify   # check the phone gets a push
-python flight_deals/deals.py --no-notify     # search and print, no push, no state saved
+python flight_deals/deals.py --no-notify     # check and print only
 python flight_deals/deals.py                 # the real thing
 python -m unittest flight_deals/test_deals.py
 ```
 
-Alert history is kept in `flight_deals/state.json` (gitignored; on Actions it lives
-in the Actions cache).
+## Next trip
+
+Edit `[trip]` in `config.toml`: dates, budget and `google_trips`. Regions,
+airports and feeds can stay. After the latest departure date passes, the
+watcher stops checking and says so in its log.

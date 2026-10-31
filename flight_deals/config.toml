@@ -72,14 +72,8 @@ keywords = ["Europe", "Portugal", "Lisbon", "Porto", "Azores", "Ponta Delgada", 
 # Deal sites with public feeds. `url` can be the feed itself or the site's home
 # page (the feed link is found automatically). Add more by copying a block; a
 # broken feed is reported in the run log and skipped without affecting the others.
-[[feeds]]
-name = "YYZ Deals"
-url = "https://yyzdeals.com/"
-from_origin_only = true
-
-[[feeds]]
-name = "Secret Flying"
-url = "https://www.secretflying.com/feed/"
+# Not included: YYZ Deals and Secret Flying block automated readers (checked
+# Oct 2026: a 403 and a bot-check page), so subscribe to their emails instead.
 
 [[feeds]]
 name = "Flytrippers"
